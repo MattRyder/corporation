@@ -1,0 +1,12 @@
+[package]
+name = "corporation"
+version = "0.1.0"
+authors = ["Matt Ryder"]
+
+[dependencies]
+glutin = "0.18.0"
+gfx = "0.17.1"
+gfx_window_glutin = "0.26.0"
+gfx_device_gl = "0.15.3"
+error-chain = "0.12.0"
+image = "0.20.1"
