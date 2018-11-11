@@ -47,17 +47,14 @@ gfx_defines! {
 
         out_color: gfx::RenderTarget<ColorFormat> = "Target0",
 
-        //out_depth: gfx::RenderTarget<DepthFormat> = gfx::preset::depth::LESS_EQUAL_WRITE,
+        out_depth: gfx::DepthTarget<DepthFormat> = gfx::preset::depth::LESS_EQUAL_WRITE,
     }
 }
 
 pub struct TextureLoader {}
 
 impl TextureLoader {
-
-    ///
     /// Loads a texture from file
-    ///
     pub fn load_from_file<F, R>(factory: &mut F, image_file_path: &str) -> Option<ShaderResourceView<R, Vec4>>
     where
         F: gfx::Factory<R>,
@@ -71,10 +68,10 @@ impl TextureLoader {
 
                 match factory.create_texture_immutable_u8::<ColorFormat>(kind, Mipmap::Provided, &[&image.into_raw()[..]]) {
                     Ok((_, view)) => Some(view),
-                    Err(create_texture_error) => panic!(create_texture_error) 
+                    Err(create_texture_error) => panic!(create_texture_error),
                 }
             }
-            Err(image_error) => panic!(image_error)
+            Err(_) => None,
         }
     }
 }

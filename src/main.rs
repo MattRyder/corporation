@@ -1,3 +1,4 @@
+extern crate cgmath;
 #[macro_use]
 extern crate error_chain;
 #[macro_use]
@@ -7,13 +8,14 @@ extern crate gfx_window_glutin;
 extern crate glutin;
 extern crate image;
 
+pub mod camera;
+pub mod errors;
+pub mod graphics;
+
 use gfx::handle::Sampler;
 use gfx::handle::ShaderResourceView;
 use gfx::traits::FactoryExt;
 use glutin::Api::OpenGl;
-
-pub mod errors;
-pub mod graphics;
 
 use errors::*;
 use graphics::{ColorFormat, DepthFormat, GraphicsContext, Pipeline, Vertex, TextureLoader};
@@ -124,7 +126,7 @@ fn run() -> Result<()> {
         vbuf: vertex_buffer,
         texture_diffuse: (texture, sampler),
         out_color: gfx_context.color_view,
-        // out_depth: depth_stencil_view,
+        out_depth: gfx_context.depth_view,
     };
 
     let mut running = true;
@@ -139,7 +141,7 @@ fn run() -> Result<()> {
         });
 
         gfx_context.encoder.clear(&data.out_color, CLEAR_COLOR);
-        gfx_context.encoder.clear_depth(&gfx_context.depth_view, 1.0);
+        gfx_context.encoder.clear_depth(&data.out_depth, 1.0);
 
         gfx_context.encoder.draw(&slice, &pso, &data);
 
