@@ -12,13 +12,16 @@ pub mod camera;
 pub mod errors;
 pub mod graphics;
 
+use cgmath::{Point3, Rotation, Transform, Vector3};
 use gfx::handle::Sampler;
 use gfx::handle::ShaderResourceView;
 use gfx::traits::FactoryExt;
 use glutin::Api::OpenGl;
 
+use camera::Camera;
 use errors::*;
-use graphics::{ColorFormat, DepthFormat, GraphicsContext, Pipeline, Vertex, TextureLoader};
+use graphics::{ColorFormat, DepthFormat, GraphicsContext, Pipeline, Vertex};
+use graphics::texture::Loader;
 
 const WINDOW_WIDTH: f64 = 640.0;
 const WINDOW_HEIGHT: f64 = 480.0;
@@ -94,7 +97,7 @@ fn load_diffuse_texture(
     ShaderResourceView<gfx_device_gl::Resources, graphics::Vec4>,
     Sampler<gfx_device_gl::Resources>
 ) {
-    match TextureLoader::load_from_file(factory, texture_file_path) {
+    match Loader::from_file(factory, texture_file_path) {
         Some(texture) => {
             let texture_sampler = factory.create_sampler_linear();
             (texture, texture_sampler)
@@ -122,12 +125,26 @@ fn run() -> Result<()> {
 
     let (texture, sampler) = load_diffuse_texture(&mut gfx_context.factory, "resources/uv_grid.jpg");
 
+    let mut camera = Camera::<f32>::default();
+    camera.set_position(0.0, 0.0, 5.0);
+    camera.set_projection_matrix(WINDOW_WIDTH as f32, WINDOW_HEIGHT as f32, 66.0, 0.1, 100.0);
+    camera.look_at(Point3::new(0.0, 0.0, 0.0), Vector3::new(0.0, 1.0, 0.0));
+
+
     let data = Pipeline::Data {
         vbuf: vertex_buffer,
         texture_diffuse: (texture, sampler),
+        camera: gfx_context.factory.create_constant_buffer(1),
         out_color: gfx_context.color_view,
         out_depth: gfx_context.depth_view,
     };
+
+    let gfx_camera = graphics::Camera {
+        view: camera.get_view_matrix().into(),
+        projection: camera.get_projection_matrix().into()
+    };
+
+    gfx_context.encoder.update_constant_buffer(&data.camera, &gfx_camera);
 
     let mut running = true;
     while running {

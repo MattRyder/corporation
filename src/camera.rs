@@ -1,6 +1,6 @@
 use cgmath::*;
 
-struct Camera<S>
+pub struct Camera<S>
 where
     S: BaseFloat,
 {
@@ -114,20 +114,20 @@ pub mod test {
 
     #[test]
     fn should_look_at_point() {
-        // let expected_view_matrix = Matrix4::new(
-        //     0.94868326, -0.09534626, 0.30151135, 0.0,
-        //     0.0, 0.9534626, 0.30151135, 0.0,
-        //     -0.31622776, -0.28603876, 0.90453404, 0.0,
-        //     -0.0, -0.9534627, -3.6181362, 1.0
-        // );
+        let expected_view_matrix = Matrix4::new(
+            0.94868326, -0.09534626, 0.30151135, 0.0,
+            0.0, 0.9534626, 0.30151135, 0.0,
+            -0.31622776, -0.28603876, 0.90453404, 0.0,
+            -0.0, -0.9534627, -3.6181362, 1.0
+        );
 
-        // let target = Point3::new(0.0, 1.0, 0.0);
-        // let up = Vector3::new(0.0, 1.0, 0.0);
+        let target = Point3::new(0.0, 1.0, 0.0);
+        let up = Vector3::new(0.0, 1.0, 0.0);
 
-        // let mut camera = Camera::<f32>::default();
-        // camera.set_position(POSITION[0], POSITION[1], POSITION[2]);
-        // camera.look_at(target, up);
+        let mut camera = Camera::<f32>::default();
+        camera.set_position(POSITION[0], POSITION[1], POSITION[2]);
+        camera.look_at(target, up);
 
-        // assert_eq!(expected_view_matrix, camera.view);
+        assert_eq!(expected_view_matrix, camera.view);
     }
 }

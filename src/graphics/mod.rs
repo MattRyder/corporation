@@ -1,7 +1,6 @@
+pub mod texture;
+
 use gfx;
-use gfx::handle::ShaderResourceView;
-use gfx::texture::{AaMode, Kind, Mipmap};
-use image;
 
 pub type Vec2 = [f32; 2];
 pub type Vec3 = [f32; 3];
@@ -30,48 +29,25 @@ gfx_defines! {
         tex_coord: Vec2 = "a_TexCoord",
     }
 
-    constant Locals {
-        transform: [Vec4; 4] = "u_Transform",
+    constant Camera {
+        projection: [Vec4; 4] = "u_Projection",
+        view: [Vec4; 4] = "u_View",
     }
 
     pipeline Pipeline {
         vbuf: gfx::VertexBuffer<Vertex> = (),
 
         // Added for compatibility with devices that don't support const buffers
+        // projection_matrix: gfx::Global<[Vec4; 4]> = "u_Projection",
         // transform: gfx::Global<[[f32; 4]; 4]> = "u_Transform",
 
         // Like Uniform Buffer storage in opengl
-        // locals: gfx::ConstantBuffer<Locals> = "Locals",
+        camera: gfx::ConstantBuffer<Camera> = "u_Camera",
 
         texture_diffuse: gfx::TextureSampler<Vec4> = "t_Diffuse",
 
         out_color: gfx::RenderTarget<ColorFormat> = "Target0",
 
         out_depth: gfx::DepthTarget<DepthFormat> = gfx::preset::depth::LESS_EQUAL_WRITE,
-    }
-}
-
-pub struct TextureLoader {}
-
-impl TextureLoader {
-    /// Loads a texture from file
-    pub fn load_from_file<F, R>(factory: &mut F, image_file_path: &str) -> Option<ShaderResourceView<R, Vec4>>
-    where
-        F: gfx::Factory<R>,
-        R: gfx::Resources,
-    {
-        match image::open(image_file_path) {
-            Ok(image) => {
-                let image = image.flipv().to_rgba();
-                let (width, height) = image.dimensions();
-                let kind = Kind::D2(width as u16, height as u16, AaMode::Single);
-
-                match factory.create_texture_immutable_u8::<ColorFormat>(kind, Mipmap::Provided, &[&image.into_raw()[..]]) {
-                    Ok((_, view)) => Some(view),
-                    Err(create_texture_error) => panic!(create_texture_error),
-                }
-            }
-            Err(_) => None,
-        }
     }
 }
