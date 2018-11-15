@@ -1,3 +1,4 @@
+extern crate assimp;
 extern crate cgmath;
 #[macro_use]
 extern crate error_chain;
@@ -11,8 +12,10 @@ extern crate image;
 pub mod camera;
 pub mod errors;
 pub mod graphics;
+pub mod mesh;
+pub mod scene;
 
-use cgmath::{Point3, Rotation, Transform, Vector3};
+use cgmath::{Point3, Vector3};
 use gfx::handle::Sampler;
 use gfx::handle::ShaderResourceView;
 use gfx::traits::FactoryExt;
@@ -106,7 +109,16 @@ fn load_diffuse_texture(
     }
 }
 
-fn run() -> Result<()> {
+fn create_camera() -> Camera<f32> {
+    let mut camera = Camera::<f32>::default();
+    camera.set_position(0.0, 0.0, 5.0);
+    camera.set_projection_matrix(WINDOW_WIDTH as f32, WINDOW_HEIGHT as f32, 66.0, 0.1, 100.0);
+    camera.look_at(Point3::new(0.0, 0.0, 0.0), Vector3::new(0.0, 1.0, 0.0));
+
+    camera
+}
+
+pub fn run() -> Result<()> {
     use glutin::GlContext;
 
     let (mut events_loop, window, mut gfx_context) = create_gl_window(WINDOW_TITLE, WINDOW_WIDTH, WINDOW_HEIGHT)?;
@@ -125,11 +137,7 @@ fn run() -> Result<()> {
 
     let (texture, sampler) = load_diffuse_texture(&mut gfx_context.factory, "resources/uv_grid.jpg");
 
-    let mut camera = Camera::<f32>::default();
-    camera.set_position(0.0, 0.0, 5.0);
-    camera.set_projection_matrix(WINDOW_WIDTH as f32, WINDOW_HEIGHT as f32, 66.0, 0.1, 100.0);
-    camera.look_at(Point3::new(0.0, 0.0, 0.0), Vector3::new(0.0, 1.0, 0.0));
-
+    let camera = create_camera();
 
     let data = Pipeline::Data {
         vbuf: vertex_buffer,
@@ -169,5 +177,3 @@ fn run() -> Result<()> {
 
     Ok(())
 }
-
-quick_main!(run);

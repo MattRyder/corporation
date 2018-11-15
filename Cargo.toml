@@ -3,7 +3,16 @@ name = "corporation"
 version = "0.1.0"
 authors = ["Matt Ryder"]
 
+[lib]
+name = "libcorporation"
+path = "src/lib.rs"
+
+[[bin]]
+name = "corporation"
+path = "src/bin.rs"
+
 [dependencies]
+assimp = "0.3.1"
 cgmath = "0.16.1"
 glutin = "0.18.0"
 gfx = "0.17.1"

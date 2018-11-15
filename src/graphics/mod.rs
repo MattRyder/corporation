@@ -51,3 +51,15 @@ gfx_defines! {
         out_depth: gfx::DepthTarget<DepthFormat> = gfx::preset::depth::LESS_EQUAL_WRITE,
     }
 }
+
+impl Vertex {
+
+    pub fn set_position(&mut self, position: Vec3) {
+        self.position = position;
+    }
+
+    pub fn set_tex_coord(&mut self, tex_coord: Vec2) {
+        self.tex_coord = tex_coord;
+    }
+
+}
