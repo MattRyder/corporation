@@ -25,33 +25,13 @@ use camera::Camera;
 use errors::*;
 use graphics::{ColorFormat, DepthFormat, GraphicsContext, Pipeline, Vertex};
 use graphics::texture::Loader;
+use mesh::{Importer, Mesh} ;
 
 const WINDOW_WIDTH: f64 = 640.0;
 const WINDOW_HEIGHT: f64 = 480.0;
 const WINDOW_TITLE: &str = "Corporation";
 
 const CLEAR_COLOR: [f32; 4] = [0.55, 0.52, 1.0, 1.0];
-
-const SQUARE_VERTS: [Vertex; 4] = [
-    Vertex {
-        position: [-1.0, -1.0, 0.0],
-        tex_coord: [0.0, 0.0],
-    },
-    Vertex {
-        position: [-1.0, 1.0, 0.0],
-        tex_coord: [0.0, 1.0],
-    },
-    Vertex {
-        position: [1.0, 1.0, 0.0],
-        tex_coord: [1.0, 1.0],
-    },
-    Vertex {
-        position: [1.0, -1.0, 0.0],
-        tex_coord: [1.0, 0.0],
-    },
-];
-
-const SQUARE_INDICES: &[u16] = &[0, 1, 2, 2, 3, 0];
 
 fn create_gl_window(
     title: &str,
@@ -111,11 +91,22 @@ fn load_diffuse_texture(
 
 fn create_camera() -> Camera<f32> {
     let mut camera = Camera::<f32>::default();
-    camera.set_position(0.0, 0.0, 5.0);
-    camera.set_projection_matrix(WINDOW_WIDTH as f32, WINDOW_HEIGHT as f32, 66.0, 0.1, 100.0);
+    camera.set_position(0.0, 5.0, 15.0);
+    camera.set_projection_matrix(WINDOW_WIDTH as f32, WINDOW_HEIGHT as f32, 90.0, 0.1, 100.0);
     camera.look_at(Point3::new(0.0, 0.0, 0.0), Vector3::new(0.0, 1.0, 0.0));
 
     camera
+}
+
+fn load_box_mesh() -> Option<Mesh> {
+    let model_file_path = concat!(env!("CARGO_MANIFEST_DIR"), "/resources/models/box/box.obj");
+
+    if let Some(scene_node_root) = Importer::load(&model_file_path) {
+        let mesh_node = &scene_node_root.children()[0];
+        Some(mesh_node.meshes()[0].clone())
+    } else {
+        None
+    }
 }
 
 pub fn run() -> Result<()> {
@@ -133,9 +124,14 @@ pub fn run() -> Result<()> {
             Pipeline::new(),
         ).unwrap();
 
-    let (vertex_buffer, slice) = gfx_context.factory.create_vertex_buffer_with_slice(&SQUARE_VERTS, SQUARE_INDICES);
+    let model_mesh = load_box_mesh().unwrap();
 
-    let (texture, sampler) = load_diffuse_texture(&mut gfx_context.factory, "resources/uv_grid.jpg");
+    let vertices : Vec<Vertex> = model_mesh.vertex_iter().map(|v| v.clone()).collect();
+    let indices : Vec<u32> = model_mesh.face_iter().flat_map(|f| f.indices.clone()).collect::<Vec<u32>>();
+
+    let (vertex_buffer, slice) = gfx_context.factory.create_vertex_buffer_with_slice(&vertices[..], &indices[..]);
+
+    let (texture, sampler) = load_diffuse_texture(&mut gfx_context.factory, "resources/models/box/diffuse.png");
 
     let camera = create_camera();
 

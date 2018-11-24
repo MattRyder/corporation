@@ -1,21 +1,30 @@
-use std::slice::Iter;
-use graphics::Vertex;
 use assimp;
 use assimp::math::matrix4::Matrix4x4;
 use cgmath::*;
+use graphics::Vertex;
+use std::slice::Iter;
 
 use scene;
 
-#[derive(Default)]
+#[derive(Default, Clone)]
+pub struct Face {
+    pub indices: Vec<u32>,
+}
+
+#[derive(Default, Clone)]
 pub struct Mesh {
     name: String,
-    vertices: Vec<Vertex>
+    vertices: Vec<Vertex>,
+    faces: Vec<Face>,
 }
 
 impl Mesh {
-
     pub fn vertex_iter(&self) -> Iter<Vertex> {
         self.vertices.iter()
+    }
+
+    pub fn face_iter(&self) -> Iter<Face> {
+        self.faces.iter()
     }
 
     pub fn name(&self) -> &String {
@@ -23,7 +32,7 @@ impl Mesh {
     }
 }
 
-pub struct Importer { }
+pub struct Importer {}
 
 impl Importer {
     pub fn load(mesh_file_path: &str) -> Option<scene::Node> {
@@ -73,20 +82,44 @@ impl Importer {
         let name = String::from_utf8(assimp_mesh.name.data.to_vec()).unwrap();
 
         let num_vertices = assimp_mesh.num_vertices() as usize;
+
         let mut vertices = Vec::with_capacity(num_vertices);
 
-        for i in 0..(num_vertices as u32) {
-            // TODO: Implement multiple UV channel lookup
-            const UV_CHANNEL_ZERO : usize = 0;
+        for i in 0..num_vertices {
+            let mut position: [f32; 3] = [0.0, 0.0, 0.0];
+            let mut tex_coord: [f32; 2] = [0.0, 0.0];
 
-            if let (Some(ai_vertex), Some(ai_tex_coord)) = (assimp_mesh.get_vertex(i), assimp_mesh.get_texture_coord(UV_CHANNEL_ZERO, i)) {
-                vertices.push(Vertex {
-                    position: [ai_vertex.x, ai_vertex.y, ai_vertex.z],
-                    tex_coord: [ai_tex_coord.x, ai_tex_coord.y]
-                });
+            if assimp_mesh.has_positions() {
+                if let Some(ai_vertex) = assimp_mesh.get_vertex(i as u32) {
+                    position = [ai_vertex.x, ai_vertex.y, ai_vertex.z];
+                }
             }
+
+            if assimp_mesh.has_texture_coords(i) {
+                // TODO: Implement multiple UV channel lookup
+                const UV_CHANNEL_ZERO: usize = 0;
+
+                if let Some(ai_tex_coord) = assimp_mesh.get_texture_coord(UV_CHANNEL_ZERO, i as u32) {
+                    tex_coord = [ai_tex_coord.x, ai_tex_coord.y];
+                }
+            }
+
+            vertices.push(Vertex { position, tex_coord });
         }
 
-        Mesh { name, vertices }
+        let faces: Vec<Face> = assimp_mesh
+            .face_iter()
+            .map(|face| {
+                let num_indices = face.num_indices as usize;
+                let mut indices: Vec<u32> = Vec::with_capacity(num_indices);
+
+                for i in 0..(num_indices as isize) {
+                    indices.push(face[i]);
+                }
+
+                Face { indices }
+            }).collect();
+
+        Mesh { name, vertices, faces }
     }
 }

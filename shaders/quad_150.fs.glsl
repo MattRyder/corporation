@@ -1,6 +1,7 @@
 #version 150 core
 
 in vec2 v_TexCoord;
+in vec3 v_Position;
 
 uniform sampler2D t_Diffuse;
 

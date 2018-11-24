@@ -16,7 +16,6 @@ pub struct GraphicsContext<C: gfx::CommandBuffer<R>, D: gfx::Device, F: gfx::tra
     pub depth_view: DepthTargetView<R>,
     pub device: D,
     pub encoder: gfx::Encoder<R, C>,
-    #[allow(dead_code)]
     pub factory: F,
 }
 
