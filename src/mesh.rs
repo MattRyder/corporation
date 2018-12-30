@@ -104,7 +104,10 @@ impl Importer {
                 }
             }
 
-            vertices.push(Vertex { position, tex_coord });
+            vertices.push(Vertex {
+                a_Position: position,
+                a_TexCoord: tex_coord,
+            });
         }
 
         let faces: Vec<Face> = assimp_mesh

@@ -1,10 +1,27 @@
 language: rust
+
+addons:
+  apt:
+    sources:
+      - llvm-toolchain-trusty-3.9
+    packages:
+      - clang-3.9
+
 rust:
   - stable
   - beta
   - nightly
+
 matrix:
   allow_failures:
     - rust: nightly
   fast_finish: true
+
 cache: cargo
+
+before_install:
+  - sudo apt-get install -y clang-3.9
+
+script:
+  - cargo build --verbose --all --features=empty
+  - cargo test --verbose --all --features=empty
