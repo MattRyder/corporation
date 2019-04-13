@@ -13,7 +13,7 @@ pub enum Error {
 pub struct Loader {}
 
 impl Loader {
-    pub fn compile<'a>(name: &str, kind: Kind, shader_source: &str) -> Result<Vec<u8>, Error> {
+    pub fn compile<'a>(name: &str, kind: &Kind, shader_source: &str) -> Result<Vec<u8>, Error> {
         let mut compiler = shaderc::Compiler::new().unwrap();
         let opts = shaderc::CompileOptions::new().unwrap();
 
@@ -42,7 +42,7 @@ pub mod test {
     fn should_compile_shader() {
         let source = "#version 150 core\n void main() {}";
 
-        let result = Loader::compile(&NAME, Kind::Vertex, &source);
+        let result = Loader::compile(&NAME, &Kind::Vertex, &source);
 
         assert!(result.is_ok());
     }
@@ -50,7 +50,7 @@ pub mod test {
     #[test]
     fn should_raise_compile_error() {
         let source = "";
-        let result = Loader::compile(&NAME, Kind::Vertex, &source);
+        let result = Loader::compile(&NAME, &Kind::Vertex, &source);
 
         assert!(result.is_err());
     }

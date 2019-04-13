@@ -7,8 +7,8 @@ pub const RGBA_IMAGE_STRIDE : usize = 4;
 pub struct Loader;
 
 pub struct Texture {
-    image: image::RgbaImage,
-    kind: i::Kind,
+    pub image: image::RgbaImage,
+    pub kind: i::Kind,
 }
 
 impl Texture {

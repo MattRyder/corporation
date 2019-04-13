@@ -23,5 +23,5 @@ before_install:
   - sudo apt-get install -y clang-3.9
 
 script:
-  - cargo build --verbose --all --features=empty
+  - travis_wait cargo build --verbose --all --features=empty
   - cargo test --verbose --all --features=empty
