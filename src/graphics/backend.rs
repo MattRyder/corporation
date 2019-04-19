@@ -22,7 +22,7 @@ pub struct BackendState<B: Backend> {
   pub adapter_state: AdapterState<B>,
 
   #[cfg(any(feature = "vulkan", feature = "dx12", feature = "metal"))]
-  pub window: Window,
+  pub window: winit::Window,
 }
 
 impl<B: Backend> BackendState<B> {
