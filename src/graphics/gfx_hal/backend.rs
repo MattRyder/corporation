@@ -1,7 +1,7 @@
 use gfx_hal::format::{AsFormat, Rgba8Srgb};
 use gfx_hal::*;
-use graphics::adapter::AdapterState;
-use graphics::window::WindowState;
+use graphics::gfx_hal::adapter::AdapterState;
+use graphics::gfx_hal::window::WindowState;
 
 pub type ColorFormat = Rgba8Srgb;
 

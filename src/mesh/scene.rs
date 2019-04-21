@@ -5,7 +5,7 @@ pub struct Node {
     name: String,
     transformation: Matrix4<f32>,
     meshes: Vec<Mesh>,
-    children: Vec<Node>
+    children: Vec<Node>,
 }
 
 impl Node {
@@ -14,7 +14,7 @@ impl Node {
             name: name.to_string(),
             transformation: transformation_matrix,
             children: Vec::new(),
-            meshes: Vec::new()
+            meshes: Vec::new(),
         }
     }
 
@@ -57,6 +57,5 @@ pub mod tests {
         root.add_child_node(child);
 
         assert_eq!(1, root.children.len());
-
     }
 }

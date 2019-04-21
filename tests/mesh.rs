@@ -1,17 +1,17 @@
-extern crate libcorporation;
 extern crate cgmath;
+extern crate libcorporation;
 
-use libcorporation::mesh::Importer;
 use self::cgmath::*;
+use libcorporation::mesh::importer::Importer;
 
-const MESH_FILE_PATH : &str = "/tests/resources/box.obj";
+const MESH_FILE_PATH: &str = "/tests/resources/box.obj";
 
 #[test]
 fn should_process_node() {
-    const EXPECTED_SCENE_NAME : &str = "box.obj";
-    const EXPECTED_MESH_NAME : &str = "TestBoxModel";
-    const EXPECTED_MESH_COUNT : usize = 1;
-    const EXPECTED_VERTEX_COUNT : usize = 24;
+    const EXPECTED_SCENE_NAME: &str = "box.obj";
+    const EXPECTED_MESH_NAME: &str = "TestBoxModel";
+    const EXPECTED_MESH_COUNT: usize = 1;
+    const EXPECTED_VERTEX_COUNT: usize = 24;
 
     let mat4_identity = Matrix4::<f32>::identity();
 

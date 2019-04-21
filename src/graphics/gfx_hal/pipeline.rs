@@ -1,8 +1,8 @@
 use gfx_hal::format as f;
 use gfx_hal::*;
-use graphics::device::DeviceState;
-use graphics::shader;
-use graphics::Vertex;
+use graphics::gfx_hal::device::DeviceState;
+use graphics::gfx_hal::shader;
+use mesh::vertex::Vertex;
 use std::cell::RefCell;
 use std::rc::Rc;
 

@@ -2,20 +2,15 @@ use gfx_hal::format as gfx_format;
 use gfx_hal::format::{AsFormat, ChannelType};
 use gfx_hal::image as gfx_image;
 use gfx_hal::*;
-use graphics::backend::{BackendState, ColorFormat};
-use graphics::device::DeviceState;
+use graphics::gfx_hal::backend::{BackendState, ColorFormat};
+use graphics::gfx_hal::device::DeviceState;
 use std::cell::RefCell;
 use std::rc::Rc;
-
-const DEFAULT_EXTENT : window::Extent2D = window::Extent2D {
-    width: 640,
-    height: 480
-};
 
 pub struct SwapchainState<B: Backend> {
     pub swapchain: Option<B::Swapchain>,
     pub backbuffer: Option<Backbuffer<B>>,
-    device_state: Rc<RefCell<DeviceState<B, Graphics>>>,
+    // device_state: Rc<RefCell<DeviceState<B, Graphics>>>,
     pub extent: gfx_image::Extent,
     pub format: gfx_format::Format,
 }
@@ -55,7 +50,7 @@ impl<B: Backend> SwapchainState<B> {
         SwapchainState {
             swapchain: Some(swapchain),
             backbuffer: Some(backbuffer),
-            device_state,
+            // device_state,
             extent,
             format,
         }

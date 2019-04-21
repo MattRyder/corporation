@@ -1,5 +1,5 @@
 use gfx_hal::*;
-use graphics::device::DeviceState;
+use graphics::gfx_hal::device::DeviceState;
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::borrow::Borrow;
@@ -39,9 +39,11 @@ impl<B: Backend, C: Capability> DescriptorSetLayout<B, C> {
 
 impl<B: Backend, C: Capability> Drop for DescriptorSetLayout<B, C> {
   fn drop(&mut self) {
-    // unsafe {
-    //   device.destroy_descriptor_set_layout(self.layout.take().unwrap());
-    // }
+    let device = &self.device_state.as_ref().borrow().device;
+
+    unsafe {
+      device.destroy_descriptor_set_layout(self.layout.take().unwrap());
+    }
   }
 }
 

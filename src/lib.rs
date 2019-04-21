@@ -23,13 +23,15 @@ extern crate gfx_hal as gfx_hal;
 pub mod camera;
 pub mod errors;
 pub mod graphics;
+
+pub mod maths;
 pub mod mesh;
-pub mod scene;
 
 use errors::*;
-use graphics::backend::BackendState;
-use graphics::renderer::RendererState;
-use graphics::window::WindowState;
+use gfx_hal::window::Extent2D;
+use graphics::gfx_hal::backend::BackendState;
+use graphics::gfx_hal::renderer::RendererState;
+use graphics::gfx_hal::window::WindowState;
 
 const WINDOW_WIDTH: f64 = 640.0;
 const WINDOW_HEIGHT: f64 = 480.0;
@@ -43,7 +45,12 @@ pub fn run() -> Result<()> {
 
   let (backend_state, _instance) = BackendState::<gfx_backend::Backend>::new(&mut window_state);
 
-  let mut renderer_state = unsafe { RendererState::new(backend_state, window_state, WINDOW_WIDTH as u32, WINDOW_HEIGHT as u32) };
+  let framebuffer_extent = Extent2D {
+    width: WINDOW_WIDTH as u32,
+    height: WINDOW_HEIGHT as u32,
+  };
+
+  let mut renderer_state = unsafe { RendererState::new(backend_state, window_state, framebuffer_extent) };
 
   unsafe {
     renderer_state.render();

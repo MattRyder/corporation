@@ -1,8 +1,8 @@
 use gfx_hal::memory as m;
 use gfx_hal::*;
-use graphics::adapter::AdapterState;
-use graphics::device::DeviceState;
-use graphics::image::Image;
+use graphics::gfx_hal::adapter::AdapterState;
+use graphics::gfx_hal::device::DeviceState;
+use graphics::gfx_hal::image::Image;
 use std::cell::RefCell;
 use std::rc::Rc;
 

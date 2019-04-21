@@ -1,10 +1,10 @@
 use gfx_hal::format as f;
 use gfx_hal::image as i;
 use gfx_hal::*;
-use graphics::device::DeviceState;
-use graphics::image::COLOR_RANGE;
-use graphics::renderer::RenderPassState;
-use graphics::swapchain::SwapchainState;
+use graphics::gfx_hal::device::DeviceState;
+use graphics::gfx_hal::image::COLOR_RANGE;
+use graphics::gfx_hal::renderer::RenderPassState;
+use graphics::gfx_hal::swapchain::SwapchainState;
 use std::cell::RefCell;
 use std::rc::Rc;
 

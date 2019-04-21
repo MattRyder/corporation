@@ -1,19 +1,19 @@
 use gfx_hal::image as gfx_image;
 use gfx_hal::pso::*;
 use gfx_hal::*;
-use graphics::backend::BackendState;
-use graphics::backend::SurfaceTrait;
-use graphics::buffer::BufferState;
-use graphics::descriptor::DescriptorSetLayout;
-use graphics::device::DeviceState;
-use graphics::framebuffer::FramebufferState;
-use graphics::image::ImageState;
-use graphics::image::Loader;
-use graphics::pipeline::PipelineState;
-use graphics::swapchain::SwapchainState;
-use graphics::uniform::Uniform;
-use graphics::window::WindowState;
-use graphics::Vertex;
+use graphics::gfx_hal::backend::BackendState;
+use graphics::gfx_hal::backend::SurfaceTrait;
+use graphics::gfx_hal::buffer::BufferState;
+use graphics::gfx_hal::device::DeviceState;
+use graphics::gfx_hal::descriptor::DescriptorSetLayout;
+use graphics::gfx_hal::framebuffer::FramebufferState;
+use graphics::gfx_hal::image::ImageState;
+use graphics::gfx_hal::pipeline::PipelineState;
+use graphics::gfx_hal::swapchain::SwapchainState;
+use graphics::gfx_hal::image::Loader;
+use graphics::gfx_hal::uniform::Uniform;
+use graphics::gfx_hal::window::WindowState;
+use mesh::vertex::Vertex;
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -110,7 +110,7 @@ pub struct RendererState<B: Backend> {
 }
 
 impl<B: Backend> RendererState<B> {
-  pub unsafe fn new(mut backend_state: BackendState<B>, window_state: WindowState, frame_width: u32, frame_height: u32) -> Self {
+  pub unsafe fn new(mut backend_state: BackendState<B>, window_state: WindowState, frame_extent: window::Extent2D,) -> Self {
     let device_state = Rc::new(RefCell::new(DeviceState::new(
       backend_state.adapter_state.adapter.take().unwrap(),
       &backend_state.surface,
@@ -181,7 +181,6 @@ impl<B: Backend> RendererState<B> {
 
     let uniform_descriptor_set = uniform_desc_set_layout.create_set(uniform_descriptor_pool.as_mut().unwrap());
 
-    let image_data = Loader::from_file("resources/uv_grid.jpg").expect("Failed to load image");
 
     let vertex_buffer = BufferState::new::<Vertex>(
       Rc::clone(&device_state),
@@ -212,6 +211,8 @@ impl<B: Backend> RendererState<B> {
       .create_command_pool_typed(&device_state.as_ref().borrow().queue_group, pool::CommandPoolCreateFlags::empty())
       .unwrap();
 
+    let image_data = Loader::from_file("resources/uv_grid.jpg").expect("Failed to load image");
+
     let image_state = ImageState::new(
       image_descriptor_set,
       &mut device_state.borrow_mut(),
@@ -225,7 +226,7 @@ impl<B: Backend> RendererState<B> {
 
     device_state.as_ref().borrow().device.destroy_command_pool(staging_pool.into_raw());
 
-    let swapchain_state = SwapchainState::new(&mut backend_state, Rc::clone(&device_state), window::Extent2D { width: frame_width, height: frame_height });
+    let swapchain_state = SwapchainState::new(&mut backend_state, Rc::clone(&device_state), frame_extent);
 
     let mut swapchain_state = Some(swapchain_state);
 

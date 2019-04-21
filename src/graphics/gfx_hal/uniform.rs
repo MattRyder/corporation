@@ -1,7 +1,7 @@
 use gfx_hal::*;
-use graphics::buffer::BufferState;
-use graphics::descriptor::{DescriptorSet, DescriptorSetWrite};
-use graphics::device::DeviceState;
+use graphics::gfx_hal::buffer::BufferState;
+use graphics::gfx_hal::descriptor::{DescriptorSet, DescriptorSetWrite};
+use graphics::gfx_hal::device::DeviceState;
 use std::cell::RefCell;
 use std::rc::Rc;
 
