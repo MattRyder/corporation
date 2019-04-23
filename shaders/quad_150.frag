@@ -8,6 +8,10 @@ layout(location = 0) out vec4 Target0;
 layout(set = 0, binding = 0) uniform texture2D u_Texture;
 layout(set = 0, binding = 1) uniform sampler u_Sampler;
 
+layout(set = 1, binding = 0) uniform ubo_Foo {
+    vec4 col;
+} foo_dat;
+
 void main() {
-    Target0 = texture(sampler2D(u_Texture, u_Sampler), vs_TexCoord);
+    Target0 = texture(sampler2D(u_Texture, u_Sampler), vs_TexCoord) * foo_dat.col;
 }

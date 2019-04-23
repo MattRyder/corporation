@@ -4,15 +4,16 @@ use gfx_hal::*;
 use graphics::gfx_hal::backend::BackendState;
 use graphics::gfx_hal::backend::SurfaceTrait;
 use graphics::gfx_hal::buffer::BufferState;
-use graphics::gfx_hal::device::DeviceState;
 use graphics::gfx_hal::descriptor::DescriptorSetLayout;
+use graphics::gfx_hal::device::DeviceState;
 use graphics::gfx_hal::framebuffer::FramebufferState;
 use graphics::gfx_hal::image::ImageState;
+use graphics::gfx_hal::image::Loader;
 use graphics::gfx_hal::pipeline::PipelineState;
 use graphics::gfx_hal::swapchain::SwapchainState;
-use graphics::gfx_hal::image::Loader;
 use graphics::gfx_hal::uniform::Uniform;
 use graphics::gfx_hal::window::WindowState;
+use graphics::RenderStateInitializer;
 use mesh::vertex::Vertex;
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -96,91 +97,32 @@ pub struct RendererState<B: Backend> {
   backend_state: BackendState<B>,
   pub device_state: Rc<RefCell<DeviceState<B, Graphics>>>,
   framebuffer_state: FramebufferState<B>,
-  image_descriptor_pool: Option<B::DescriptorPool>,
-  image_state: ImageState<B>,
+  descriptor_pool: Option<B::DescriptorPool>,
+  // image_state: ImageState<B>,
   index_buffer: BufferState<B, Graphics>,
   pipeline_state: PipelineState<B>,
   render_pass_state: RenderPassState<B>,
   swapchain_state: Option<SwapchainState<B>>,
-  uniform_descriptor_pool: Option<B::DescriptorPool>,
-  uniform: Uniform<B>,
   viewport: pso::Viewport,
   vertex_buffer: BufferState<B, Graphics>,
   window_state: WindowState,
+
+  // New fields
+  uniforms: Vec<Uniform<B>>,
+  image_states: Vec<ImageState<B>>,
 }
 
 impl<B: Backend> RendererState<B> {
-  pub unsafe fn new(mut backend_state: BackendState<B>, window_state: WindowState, frame_extent: window::Extent2D,) -> Self {
+  pub unsafe fn new<T: Copy>(
+    mut backend_state: BackendState<B>,
+    window_state: WindowState,
+    frame_extent: window::Extent2D,
+    initializer: RenderStateInitializer<T>,
+  ) -> Self {
     let device_state = Rc::new(RefCell::new(DeviceState::new(
       backend_state.adapter_state.adapter.take().unwrap(),
       &backend_state.surface,
     )));
-
-    let mut image_descriptor_pool = device_state
-      .borrow()
-      .device
-      .create_descriptor_pool(
-        1,
-        &[
-          pso::DescriptorRangeDesc {
-            count: 1,
-            ty: pso::DescriptorType::SampledImage,
-          },
-          pso::DescriptorRangeDesc {
-            count: 1,
-            ty: pso::DescriptorType::Sampler,
-          },
-        ],
-      )
-      .ok();
-
-    let mut uniform_descriptor_pool = device_state
-      .borrow()
-      .device
-      .create_descriptor_pool(
-        1,
-        &[pso::DescriptorRangeDesc {
-          count: 1,
-          ty: pso::DescriptorType::UniformBuffer,
-        }],
-      )
-      .ok();
-
-    let image_desc_set_layout = DescriptorSetLayout::new(
-      Rc::clone(&device_state),
-      vec![
-        pso::DescriptorSetLayoutBinding {
-          binding: 0,
-          ty: pso::DescriptorType::SampledImage,
-          stage_flags: pso::ShaderStageFlags::FRAGMENT,
-          count: 1,
-          immutable_samplers: false,
-        },
-        pso::DescriptorSetLayoutBinding {
-          binding: 1,
-          ty: pso::DescriptorType::Sampler,
-          stage_flags: pso::ShaderStageFlags::FRAGMENT,
-          count: 1,
-          immutable_samplers: false,
-        },
-      ],
-    );
-
-    let uniform_desc_set_layout = DescriptorSetLayout::new(
-      Rc::clone(&device_state),
-      vec![pso::DescriptorSetLayoutBinding {
-        binding: 0,
-        ty: pso::DescriptorType::UniformBuffer,
-        stage_flags: pso::ShaderStageFlags::VERTEX,
-        count: 1,
-        immutable_samplers: false,
-      }],
-    );
-
-    let image_descriptor_set = image_desc_set_layout.create_set(image_descriptor_pool.as_mut().unwrap());
-
-    let uniform_descriptor_set = uniform_desc_set_layout.create_set(uniform_descriptor_pool.as_mut().unwrap());
-
 
     let vertex_buffer = BufferState::new::<Vertex>(
       Rc::clone(&device_state),
@@ -196,13 +138,29 @@ impl<B: Backend> RendererState<B> {
       &backend_state.adapter_state.mem_types,
     );
 
-    let uniform = Uniform::new(
-      Rc::clone(&device_state),
-      &backend_state.adapter_state.mem_types,
-      &[1.0f32, 1.0f32, 1.0f32, 1.0f32],
-      uniform_descriptor_set,
-      0,
-    );
+    let descriptor_pool_max_sets = 1;
+
+    let mut descriptor_pool = device_state
+      .borrow()
+      .device
+      .create_descriptor_pool(
+        descriptor_pool_max_sets,
+        &[
+          pso::DescriptorRangeDesc {
+            count: 1,
+            ty: pso::DescriptorType::SampledImage,
+          },
+          pso::DescriptorRangeDesc {
+            count: 1,
+            ty: pso::DescriptorType::Sampler,
+          },
+          pso::DescriptorRangeDesc {
+            count: 1,
+            ty: pso::DescriptorType::UniformBuffer,
+          },
+        ],
+      )
+      .ok();
 
     let mut staging_pool = device_state
       .as_ref()
@@ -211,20 +169,73 @@ impl<B: Backend> RendererState<B> {
       .create_command_pool_typed(&device_state.as_ref().borrow().queue_group, pool::CommandPoolCreateFlags::empty())
       .unwrap();
 
-    let image_data = Loader::from_file("resources/uv_grid.jpg").expect("Failed to load image");
+    let mut image_states = vec![];
 
-    let image_state = ImageState::new(
-      image_descriptor_set,
-      &mut device_state.borrow_mut(),
-      &backend_state.adapter_state,
-      image_data,
-      buffer::Usage::TRANSFER_SRC,
-      &mut staging_pool,
-    );
+    for texture in initializer.textures {
+      let image_desc_set_layout = DescriptorSetLayout::new(
+        Rc::clone(&device_state),
+        vec![
+          pso::DescriptorSetLayoutBinding {
+            binding: 0,
+            ty: pso::DescriptorType::SampledImage,
+            stage_flags: pso::ShaderStageFlags::FRAGMENT,
+            count: 1,
+            immutable_samplers: false,
+          },
+          pso::DescriptorSetLayoutBinding {
+            binding: 1,
+            ty: pso::DescriptorType::Sampler,
+            stage_flags: pso::ShaderStageFlags::FRAGMENT,
+            count: 1,
+            immutable_samplers: false,
+          },
+        ],
+      );
 
-    image_state.wait_for_transfer();
+      let image_descriptor_set = image_desc_set_layout.create_set(descriptor_pool.as_mut().unwrap());
+
+      let image_state = ImageState::new(
+        image_descriptor_set,
+        &mut device_state.borrow_mut(),
+        &backend_state.adapter_state,
+        texture.1,
+        buffer::Usage::TRANSFER_SRC,
+        &mut staging_pool,
+      );
+
+      image_state.wait_for_transfer();
+
+      image_states.push(image_state);
+    }
 
     device_state.as_ref().borrow().device.destroy_command_pool(staging_pool.into_raw());
+
+    let mut uniforms = vec![];
+
+    for (binding_idx, uniform_data) in initializer.uniforms {
+      let unif_desc_set_layout = DescriptorSetLayout::new(
+        Rc::clone(&device_state),
+        vec![pso::DescriptorSetLayoutBinding {
+          binding: binding_idx,
+          ty: pso::DescriptorType::UniformBuffer,
+          stage_flags: pso::ShaderStageFlags::FRAGMENT,
+          count: 1,
+          immutable_samplers: false,
+        }],
+      );
+
+      let desc_set = unif_desc_set_layout.create_set(descriptor_pool.as_mut().unwrap());
+
+      let uniform = Uniform::new(
+        Rc::clone(&device_state),
+        &backend_state.adapter_state.mem_types,
+        &uniform_data.data,
+        desc_set,
+        binding_idx,
+      );
+
+      uniforms.push(uniform);
+    }
 
     let swapchain_state = SwapchainState::new(&mut backend_state, Rc::clone(&device_state), frame_extent);
 
@@ -235,7 +246,7 @@ impl<B: Backend> RendererState<B> {
     let framebuffer_state = FramebufferState::new(Rc::clone(&device_state), &render_pass_state, swapchain_state.as_mut().unwrap());
 
     let pipeline_state = PipelineState::new(
-      vec![image_state.get_layout(), uniform.get_layout()],
+      vec![image_states.first().unwrap().get_layout(), uniforms.first().unwrap().get_layout()],
       render_pass_state.render_pass.as_ref().unwrap(),
       Rc::clone(&device_state),
     );
@@ -246,17 +257,17 @@ impl<B: Backend> RendererState<B> {
       backend_state,
       device_state,
       framebuffer_state,
-      image_state,
-      image_descriptor_pool,
+      descriptor_pool,
       index_buffer,
       pipeline_state,
       render_pass_state,
       swapchain_state,
-      uniform,
-      uniform_descriptor_pool,
       window_state,
       vertex_buffer,
       viewport,
+
+      uniforms,
+      image_states,
     }
   }
 
@@ -267,10 +278,7 @@ impl<B: Backend> RendererState<B> {
     let mut is_running = true;
     let mut will_recreate_swapchain = false;
 
-    let mut resize_dimensions = window::Extent2D {
-      width: 640,
-      height: 480,
-    };
+    let mut resize_dimensions = window::Extent2D { width: 640, height: 480 };
 
     while is_running {
       {
@@ -346,21 +354,27 @@ impl<B: Backend> RendererState<B> {
       let mut cmd_buffer = command_pool.acquire_command_buffer::<command::OneShot>();
       cmd_buffer.begin();
 
+      let uniform_desc_sets = self
+        .uniforms
+        .iter()
+        .map(|u| u.descriptor_set.as_ref().unwrap().set.as_ref().unwrap())
+        .collect::<Vec<&B::DescriptorSet>>();
+
+      let mut image_desc_sets = self
+        .image_states
+        .iter()
+        .map(|i| i.descriptor_set.set.as_ref().unwrap())
+        .collect::<Vec<&B::DescriptorSet>>();
+
+      image_desc_sets.extend(uniform_desc_sets);
+
       // Record a command buffer to get some rendering going:
       cmd_buffer.set_viewports(0, &[self.viewport.clone()]);
       cmd_buffer.set_scissors(0, &[self.viewport.rect]);
       cmd_buffer.bind_graphics_pipeline(self.pipeline_state.pipeline.as_ref().unwrap());
       cmd_buffer.bind_vertex_buffers(0, Some((self.vertex_buffer.buffer.as_ref().unwrap(), 0)));
       cmd_buffer.bind_index_buffer(self.index_buffer.get_buffer_view());
-      cmd_buffer.bind_graphics_descriptor_sets(
-        self.pipeline_state.pipeline_layout.as_ref().unwrap(),
-        0,
-        vec![
-          self.image_state.descriptor_set.set.as_ref().unwrap(),
-          self.uniform.descriptor_set.as_ref().unwrap().set.as_ref().unwrap(),
-        ],
-        &[],
-      );
+      cmd_buffer.bind_graphics_descriptor_sets(self.pipeline_state.pipeline_layout.as_ref().unwrap(), 0, image_desc_sets, &[]);
 
       {
         let mut encoder = cmd_buffer.begin_render_pass_inline(
@@ -416,7 +430,7 @@ impl<B: Backend> RendererState<B> {
     );
 
     self.pipeline_state = PipelineState::new(
-      vec![self.image_state.get_layout(), self.uniform.get_layout()],
+      vec![self.image_states.first().unwrap().get_layout(), self.uniforms.first().unwrap().get_layout()],
       self.render_pass_state.render_pass.as_ref().unwrap(),
       Rc::clone(&self.device_state),
     );
@@ -447,14 +461,7 @@ impl<B: Backend> Drop for RendererState<B> {
         .as_ref()
         .borrow()
         .device
-        .destroy_descriptor_pool(self.image_descriptor_pool.take().unwrap());
-
-      self
-        .device_state
-        .as_ref()
-        .borrow()
-        .device
-        .destroy_descriptor_pool(self.uniform_descriptor_pool.take().unwrap());
+        .destroy_descriptor_pool(self.descriptor_pool.take().unwrap());
 
       self.swapchain_state.take();
     }

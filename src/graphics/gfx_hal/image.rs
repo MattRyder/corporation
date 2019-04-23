@@ -26,7 +26,7 @@ pub const COLOR_RANGE: i::SubresourceRange = i::SubresourceRange {
 pub struct ImageState<B: Backend> {
     pub descriptor_set: DescriptorSet<B, Graphics>,
     sampler: Option<B::Sampler>,
-    buffer: Option<B::Buffer>,
+    buffer_state: BufferState<B, Graphics>,
     image_view: Option<B::ImageView>,
     image: Option<B::Image>,
     memory: Option<B::Memory>,
@@ -44,15 +44,13 @@ impl<B: Backend> ImageState<B> {
     ) -> Self {
         const MIP_LEVELS: u8 = 1;
 
-        let mut image_buffer_state = BufferState::new_texture(
+        let image_buffer_state = BufferState::new_texture(
             Rc::clone(&descriptor_set.layout.device_state),
             &device_state.device,
             adapter_state,
             &texture,
             usage,
         );
-
-        let image_buffer = image_buffer_state.buffer.take().unwrap();
 
         let mut image = device_state
             .device
@@ -125,7 +123,7 @@ impl<B: Backend> ImageState<B> {
             );
 
             cmd_buffer.copy_buffer_to_image(
-                &image_buffer,
+                &image_buffer_state.get_buffer(),
                 &image,
                 i::Layout::TransferDstOptimal,
                 &[command::BufferImageCopy {
@@ -167,7 +165,7 @@ impl<B: Backend> ImageState<B> {
 
         ImageState {
             descriptor_set: descriptor_set,
-            buffer: Some(image_buffer),
+            buffer_state: image_buffer_state,
             image: Some(image),
             image_view: Some(image_view),
             sampler: Some(sampler),
@@ -248,7 +246,6 @@ impl<B: Backend> Drop for ImageState<B> {
             device.destroy_sampler(self.sampler.take().unwrap());
             device.destroy_image_view(self.image_view.take().unwrap());
             device.destroy_image(self.image.take().unwrap());
-            device.destroy_buffer(self.buffer.take().unwrap());
 
             device.free_memory(self.memory.take().unwrap());
         }

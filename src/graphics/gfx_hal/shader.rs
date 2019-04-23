@@ -36,7 +36,7 @@ impl Loader {
 pub mod test {
     use super::*;
 
-    const NAME : &str = "test_vs_shader";
+    const NAME: &str = "test_vs_shader";
 
     #[test]
     fn should_compile_shader() {

@@ -10,7 +10,7 @@ pub struct BufferState<B: Backend, C: Capability> {
   device_state: Rc<RefCell<DeviceState<B, C>>>,
   memory: Option<B::Memory>,
   pub buffer: Option<B::Buffer>,
-  size: u64,
+  // size: u64,
 }
 
 impl<B: Backend, C: Capability> BufferState<B, C> {
@@ -45,7 +45,7 @@ impl<B: Backend, C: Capability> BufferState<B, C> {
       device_state: Rc::clone(&device_state),
       memory: Some(memory),
       buffer: Some(buffer),
-      size: memory_size,
+      // size: memory_size,
     }
   }
 
@@ -59,7 +59,7 @@ impl<B: Backend, C: Capability> BufferState<B, C> {
       .into()
   }
 
-  unsafe fn allocate_buffer_memory(
+  pub unsafe fn allocate_buffer_memory(
     device: &B::Device,
     buffer: &B::Buffer,
     memory_types: &[MemoryType],
@@ -117,7 +117,7 @@ impl<B: Backend, C: Capability> BufferState<B, C> {
       device_state: Rc::clone(&device_state),
       memory: Some(memory),
       buffer: Some(buffer),
-      size: upload_size,
+      // size: upload_size,
     }
   }
 
@@ -130,6 +130,17 @@ impl<B: Backend, C: Capability> BufferState<B, C> {
       buffer: self.buffer.as_ref().unwrap(),
       offset: 0,
       index_type: IndexType::U16,
+    }
+  }
+}
+
+impl<B: Backend, C: Capability> Drop for BufferState<B, C> {
+  fn drop(&mut self) {
+    let device = &self.device_state.borrow().device;
+
+    unsafe {
+      device.destroy_buffer(self.buffer.take().unwrap());
+      device.free_memory(self.memory.take().unwrap());
     }
   }
 }
