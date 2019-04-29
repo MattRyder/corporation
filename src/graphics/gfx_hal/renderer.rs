@@ -8,7 +8,6 @@ use graphics::gfx_hal::descriptor::DescriptorSetLayout;
 use graphics::gfx_hal::device::DeviceState;
 use graphics::gfx_hal::framebuffer::FramebufferState;
 use graphics::gfx_hal::image::ImageState;
-use graphics::gfx_hal::image::Loader;
 use graphics::gfx_hal::pipeline::PipelineState;
 use graphics::gfx_hal::swapchain::SwapchainState;
 use graphics::gfx_hal::uniform::Uniform;
@@ -98,7 +97,6 @@ pub struct RendererState<B: Backend> {
   pub device_state: Rc<RefCell<DeviceState<B, Graphics>>>,
   framebuffer_state: FramebufferState<B>,
   descriptor_pool: Option<B::DescriptorPool>,
-  // image_state: ImageState<B>,
   index_buffer: BufferState<B, Graphics>,
   pipeline_state: PipelineState<B>,
   render_pass_state: RenderPassState<B>,
@@ -155,7 +153,7 @@ impl<B: Backend> RendererState<B> {
             ty: pso::DescriptorType::Sampler,
           },
           pso::DescriptorRangeDesc {
-            count: 1,
+            count: 2,
             ty: pso::DescriptorType::UniformBuffer,
           },
         ],
@@ -212,6 +210,29 @@ impl<B: Backend> RendererState<B> {
 
     let mut uniforms = vec![];
 
+    let camera_desc_set_layout = DescriptorSetLayout::new(
+      Rc::clone(&device_state),
+      vec![pso::DescriptorSetLayoutBinding {
+        binding: 0,
+        ty: pso::DescriptorType::UniformBuffer,
+        stage_flags: pso::ShaderStageFlags::VERTEX,
+        count: 1,
+        immutable_samplers: false,
+      }],
+    );
+
+    let cam_desc_set = camera_desc_set_layout.create_set(descriptor_pool.as_mut().unwrap());
+
+    let camera_uniform = Uniform::new(
+      Rc::clone(&device_state),
+      &backend_state.adapter_state.mem_types,
+      &initializer.camera.get_mvp_matrix_array(),
+      cam_desc_set,
+      0,
+    );
+
+    uniforms.push(camera_uniform);
+
     for (binding_idx, uniform_data) in initializer.uniforms {
       let unif_desc_set_layout = DescriptorSetLayout::new(
         Rc::clone(&device_state),
@@ -231,7 +252,7 @@ impl<B: Backend> RendererState<B> {
         &backend_state.adapter_state.mem_types,
         &uniform_data.data,
         desc_set,
-        binding_idx,
+        0,
       );
 
       uniforms.push(uniform);
@@ -245,11 +266,22 @@ impl<B: Backend> RendererState<B> {
 
     let framebuffer_state = FramebufferState::new(Rc::clone(&device_state), &render_pass_state, swapchain_state.as_mut().unwrap());
 
-    let pipeline_state = PipelineState::new(
-      vec![image_states.first().unwrap().get_layout(), uniforms.first().unwrap().get_layout()],
-      render_pass_state.render_pass.as_ref().unwrap(),
-      Rc::clone(&device_state),
-    );
+    let pipeline_state = {
+      let uniform_desc_sets = uniforms.iter().map(|u| u.get_layout()).collect::<Vec<&B::DescriptorSetLayout>>();
+
+      let mut image_desc_sets = image_states
+        .iter()
+        .map(|i| i.get_layout())
+        .collect::<Vec<&B::DescriptorSetLayout>>();
+
+      image_desc_sets.extend(uniform_desc_sets);
+
+      PipelineState::new(
+        image_desc_sets,
+        render_pass_state.render_pass.as_ref().unwrap(),
+        Rc::clone(&device_state),
+      )
+    };
 
     let viewport = Self::create_viewport(&swapchain_state.as_ref().unwrap());
 
@@ -314,7 +346,7 @@ impl<B: Backend> RendererState<B> {
       }
 
       if will_recreate_swapchain {
-        self.recreate_swapchain(resize_dimensions);
+        //self.recreate_swapchain(resize_dimensions);
         will_recreate_swapchain = false;
       }
 
@@ -374,6 +406,7 @@ impl<B: Backend> RendererState<B> {
       cmd_buffer.bind_graphics_pipeline(self.pipeline_state.pipeline.as_ref().unwrap());
       cmd_buffer.bind_vertex_buffers(0, Some((self.vertex_buffer.buffer.as_ref().unwrap(), 0)));
       cmd_buffer.bind_index_buffer(self.index_buffer.get_buffer_view());
+
       cmd_buffer.bind_graphics_descriptor_sets(self.pipeline_state.pipeline_layout.as_ref().unwrap(), 0, image_desc_sets, &[]);
 
       {
@@ -429,8 +462,22 @@ impl<B: Backend> RendererState<B> {
       self.swapchain_state.as_mut().unwrap(),
     );
 
+    let uniform_desc_sets = self
+      .uniforms
+      .iter()
+      .map(|u| u.get_layout())
+      .collect::<Vec<&B::DescriptorSetLayout>>();
+
+    let mut image_desc_sets = self
+      .image_states
+      .iter()
+      .map(|i| i.get_layout())
+      .collect::<Vec<&B::DescriptorSetLayout>>();
+
+    image_desc_sets.extend(uniform_desc_sets);
+
     self.pipeline_state = PipelineState::new(
-      vec![self.image_states.first().unwrap().get_layout(), self.uniforms.first().unwrap().get_layout()],
+      image_desc_sets,
       self.render_pass_state.render_pass.as_ref().unwrap(),
       Rc::clone(&self.device_state),
     );

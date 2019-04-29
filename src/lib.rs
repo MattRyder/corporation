@@ -51,11 +51,16 @@ pub fn run() -> Result<()> {
     height: WINDOW_HEIGHT as u32,
   };
 
+  let mut camera = camera::Camera::<f32>::default();
+  camera.set_position(cgmath::Point3::<f32>::new(0.0, 0.0, 15.0));
+  camera.look_at(cgmath::Point3::<f32>::new(0.0, 0.0, 0.0), cgmath::Vector3::<f32>::new(0.0, 1.0, 0.0));
+  camera.set_projection_matrix(WINDOW_WIDTH as f32, WINDOW_HEIGHT as f32, 90.0, 1.0, 10.0);
+
   let initializer = graphics::RenderStateInitializer {
-    camera: camera::Camera::default(),
+    camera,
     textures: vec![(0, Loader::from_file("resources/uv_grid.jpg").expect("Failed to load image"))],
     uniforms: vec![(0, graphics::UniformInitializer {
-      data: vec![1.0f32, 1.0f32, 0.5f32, 1.0f32],
+      data: vec![1.0f32, 0.5f32, 0.5f32, 1.0f32],
     })],
   };
 
