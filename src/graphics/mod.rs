@@ -1,3 +1,4 @@
+use mesh::Mesh;
 use camera::Camera;
 use graphics::gfx_hal::image::Image;
 
@@ -11,4 +12,5 @@ pub struct RenderStateInitializer<T: Copy> {
     pub camera: Camera<f32>,
     pub textures: Vec<(u32, Image)>,
     pub uniforms: Vec<(u32, UniformInitializer<T>)>,
+    pub mesh: Mesh,
 }

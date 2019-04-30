@@ -18,6 +18,22 @@ pub struct Mesh {
 }
 
 impl Mesh {
+    pub fn new(name: String, vertices: Vec<Vertex>, faces: Vec<Face>) -> Self {
+        Mesh { name, vertices, faces }
+    }
+
+    pub fn name(&self) -> &String {
+        &self.name
+    }
+
+    pub fn vertices(&self) -> &Vec<Vertex> {
+        &self.vertices
+    }
+
+    pub fn indices(&self) -> Vec<u32> {
+        self.face_iter().map(|f| f.indices.clone()).flatten().collect()
+    }
+
     pub fn vertex_iter(&self) -> Iter<Vertex> {
         self.vertices.iter()
     }
@@ -26,7 +42,5 @@ impl Mesh {
         self.faces.iter()
     }
 
-    pub fn name(&self) -> &String {
-        &self.name
-    }
+
 }

@@ -23,27 +23,6 @@ use std::rc::Rc;
 
 const CLEAR_COLOR: [f32; 4] = [0.255, 0.412, 0.882, 1.0];
 
-const QUAD: [Vertex; 4] = [
-  Vertex {
-    a_Position: [-1.0, -1.0, 0.0],
-    a_TexCoord: [0.0, 0.0],
-  },
-  Vertex {
-    a_Position: [-1.0, 1.0, 0.0],
-    a_TexCoord: [0.0, 1.0],
-  },
-  Vertex {
-    a_Position: [1.0, 1.0, 0.0],
-    a_TexCoord: [1.0, 1.0],
-  },
-  Vertex {
-    a_Position: [1.0, -1.0, 0.0],
-    a_TexCoord: [1.0, 0.0],
-  },
-];
-
-const QUAD_INDICES: [u16; 6] = [0, 1, 2, 2, 3, 0];
-
 pub struct RenderPassState<B: Backend> {
   pub render_pass: Option<B::RenderPass>,
   device_state: Rc<RefCell<DeviceState<B, Graphics>>>,
@@ -130,14 +109,14 @@ impl<B: Backend> RendererState<B> {
 
     let vertex_buffer = BufferState::new::<Vertex>(
       Rc::clone(&device_state),
-      &QUAD,
+      initializer.mesh.vertices(),
       buffer::Usage::VERTEX,
       &backend_state.adapter_state.mem_types,
     );
 
-    let index_buffer = BufferState::new::<u16>(
+    let index_buffer = BufferState::new::<u32>(
       Rc::clone(&device_state),
-      &QUAD_INDICES,
+      &initializer.mesh.indices(),
       buffer::Usage::INDEX,
       &backend_state.adapter_state.mem_types,
     );
@@ -497,8 +476,6 @@ impl<B: Backend> RendererState<B> {
       }
     }
   }
-
-  fn handle_input() {}
 
   unsafe fn recreate_swapchain(&mut self, frame_extent: window::Extent2D) {
     let device = &self.device_state.as_ref().borrow().device;

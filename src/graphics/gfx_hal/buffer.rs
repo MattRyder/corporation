@@ -146,7 +146,7 @@ impl<B: Backend, C: Capability> BufferState<B, C> {
     buffer::IndexBufferView {
       buffer: self.buffer.as_ref().unwrap(),
       offset: 0,
-      index_type: IndexType::U16,
+      index_type: IndexType::U32,
     }
   }
 }

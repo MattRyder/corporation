@@ -1,6 +1,6 @@
 extern crate assimp;
-extern crate chrono;
 extern crate cgmath;
+extern crate chrono;
 #[macro_use]
 extern crate error_chain;
 extern crate image;
@@ -34,6 +34,9 @@ use graphics::gfx_hal::backend::BackendState;
 use graphics::gfx_hal::image::Loader;
 use graphics::gfx_hal::renderer::RendererState;
 use graphics::gfx_hal::window::WindowState;
+use mesh::vertex::Vertex;
+use mesh::Face;
+use mesh::Mesh;
 
 const WINDOW_WIDTH: f64 = 640.0;
 const WINDOW_HEIGHT: f64 = 480.0;
@@ -54,15 +57,45 @@ pub fn run() -> Result<()> {
 
   let mut camera = camera::Camera::<f32>::default();
   camera.set_position(cgmath::Point3::<f32>::new(0.0, 20.0, 15.0));
-  camera.look_at(cgmath::Point3::<f32>::new(0.0, 0.0, 0.0), cgmath::Vector3::<f32>::new(0.0, 1.0, 0.0));
+  camera.look_at(
+    cgmath::Point3::<f32>::new(0.0, 0.0, 0.0),
+    cgmath::Vector3::<f32>::new(0.0, 1.0, 0.0),
+  );
   // camera.set_projection_matrix(WINDOW_WIDTH as f32, WINDOW_HEIGHT as f32, 90.0, 1.0, 10.0);
 
+  let quad_vertices = vec![
+    Vertex {
+      a_Position: [-1.0, -1.0, 0.0],
+      a_TexCoord: [0.0, 0.0],
+    },
+    Vertex {
+      a_Position: [-1.0, 1.0, 0.0],
+      a_TexCoord: [0.0, 1.0],
+    },
+    Vertex {
+      a_Position: [1.0, 1.0, 0.0],
+      a_TexCoord: [1.0, 1.0],
+    },
+    Vertex {
+      a_Position: [1.0, -1.0, 0.0],
+      a_TexCoord: [1.0, 0.0],
+    },
+  ];
+
+  let quad_faces = vec![Face { indices: vec![0, 1, 2] }, Face { indices: vec![2, 3, 0] }];
+
+  let mesh = Mesh::new("Quad Meshy".to_string(), quad_vertices, quad_faces);
+
   let initializer = graphics::RenderStateInitializer {
+    mesh,
     camera,
     textures: vec![(0, Loader::from_file("resources/uv_grid.jpg").expect("Failed to load image"))],
-    uniforms: vec![(0, graphics::UniformInitializer {
-      data: vec![1.0f32, 0.5f32, 0.5f32, 1.0f32],
-    })],
+    uniforms: vec![(
+      0,
+      graphics::UniformInitializer {
+        data: vec![1.0f32, 0.5f32, 0.5f32, 1.0f32],
+      },
+    )],
   };
 
   let mut renderer_state = unsafe { RendererState::new(backend_state, window_state, framebuffer_extent, initializer) };
