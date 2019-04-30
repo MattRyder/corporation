@@ -1,3 +1,6 @@
+use camera::Camera;
+use cgmath::InnerSpace;
+use cgmath::Zero;
 use gfx_hal::image as gfx_image;
 use gfx_hal::pso::*;
 use gfx_hal::*;
@@ -8,6 +11,7 @@ use graphics::gfx_hal::descriptor::DescriptorSetLayout;
 use graphics::gfx_hal::device::DeviceState;
 use graphics::gfx_hal::framebuffer::FramebufferState;
 use graphics::gfx_hal::image::ImageState;
+use graphics::gfx_hal::input::InputState;
 use graphics::gfx_hal::pipeline::PipelineState;
 use graphics::gfx_hal::swapchain::SwapchainState;
 use graphics::gfx_hal::uniform::Uniform;
@@ -108,6 +112,8 @@ pub struct RendererState<B: Backend> {
   // New fields
   uniforms: Vec<Uniform<B>>,
   image_states: Vec<ImageState<B>>,
+  camera: Camera<f32>,
+  input_state: InputState,
 }
 
 impl<B: Backend> RendererState<B> {
@@ -285,12 +291,15 @@ impl<B: Backend> RendererState<B> {
 
     let viewport = Self::create_viewport(&swapchain_state.as_ref().unwrap());
 
+    let input_state = InputState::new();
+
     RendererState {
       backend_state,
       device_state,
       framebuffer_state,
       descriptor_pool,
       index_buffer,
+      input_state,
       pipeline_state,
       render_pass_state,
       swapchain_state,
@@ -300,6 +309,7 @@ impl<B: Backend> RendererState<B> {
 
       uniforms,
       image_states,
+      camera: initializer.camera,
     }
   }
 
@@ -310,9 +320,17 @@ impl<B: Backend> RendererState<B> {
     let mut is_running = true;
     let mut will_recreate_swapchain = false;
 
+    let mut current_frame_time_ms = chrono::Utc::now().timestamp_millis();
+
     let mut resize_dimensions = window::Extent2D { width: 640, height: 480 };
 
+    let mut keyboard_input: Option<winit::KeyboardInput> = None;
+
     while is_running {
+      let new_frame_time_ms = chrono::Utc::now().timestamp_millis();
+      let delta_time_ms = new_frame_time_ms - current_frame_time_ms;
+      current_frame_time_ms = new_frame_time_ms;
+
       {
         #[cfg(feature = "gl")]
         let backend = &self.backend_state;
@@ -339,6 +357,10 @@ impl<B: Backend> RendererState<B> {
                 resize_dimensions.width = dimensions.width as u32;
                 resize_dimensions.height = dimensions.height as u32;
               }
+
+              winit::WindowEvent::KeyboardInput { input, .. } => {
+                keyboard_input = Some(input);
+              }
               _ => {}
             }
           }
@@ -348,6 +370,39 @@ impl<B: Backend> RendererState<B> {
       if will_recreate_swapchain {
         //self.recreate_swapchain(resize_dimensions);
         will_recreate_swapchain = false;
+      }
+
+      // hack in input state support here, fix later:
+      if let Some(kb_input) = keyboard_input {
+        self.input_state.on_key_input(kb_input.virtual_keycode.unwrap(), kb_input.state);
+      }
+
+      // Handle camera updates via input here:
+      let movement_speed = 1.0 / delta_time_ms as f32;
+      let mut camera_movement = cgmath::Vector3::<f32>::zero();
+      if self.input_state.is_key_down(&winit::VirtualKeyCode::Up) {
+        camera_movement.z = movement_speed;
+      } else if self.input_state.is_key_down(&winit::VirtualKeyCode::Down) {
+        camera_movement.z = -movement_speed;
+      }
+
+      if self.input_state.is_key_down(&winit::VirtualKeyCode::Left) {
+        camera_movement.x = -movement_speed;
+      } else if self.input_state.is_key_down(&winit::VirtualKeyCode::Right) {
+        camera_movement.x = movement_speed;
+      }
+
+      if camera_movement.magnitude() > 0.0 {
+        let cam_pos = self.camera.get_position();
+        self.camera.set_position(cam_pos + camera_movement);
+        self
+          .uniforms
+          .first_mut()
+          .unwrap()
+          .buffer_state
+          .as_mut()
+          .unwrap()
+          .update_buffer(0, &self.camera.get_mvp_matrix_array());
       }
 
       let semaphore_index = self.framebuffer_state.get_next_semaphore_index();
@@ -442,6 +497,8 @@ impl<B: Backend> RendererState<B> {
       }
     }
   }
+
+  fn handle_input() {}
 
   unsafe fn recreate_swapchain(&mut self, frame_extent: window::Extent2D) {
     let device = &self.device_state.as_ref().borrow().device;

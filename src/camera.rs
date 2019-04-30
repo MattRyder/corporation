@@ -29,6 +29,10 @@ impl<S> Camera<S>
 where
     S: BaseFloat,
 {
+    pub fn get_position(&self) -> Point3<S> {
+        self.position
+    }
+
     pub fn set_position(&mut self, position: Point3<S>) {
         self.position = position;
     }

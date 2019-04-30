@@ -20,6 +20,7 @@ path = "src/bin.rs"
 
 [dependencies]
 assimp = "0.3.1"
+chrono = "0.4.6"
 cgmath = "0.17.0"
 env_logger = "0.6.1"
 error-chain = "0.12.0"
@@ -27,6 +28,7 @@ image = "0.21.1"
 log = "0.4.6"
 shaderc = "0.3.16"
 winit ="0.18.0"
+
 
 gfx-hal = "0.1.0"
 gfx-backend-empty = { version = "0.1.1", optional = true }

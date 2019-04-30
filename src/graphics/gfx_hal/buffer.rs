@@ -1,5 +1,6 @@
 use gfx_hal::memory as m;
 use gfx_hal::*;
+use std::mem::size_of;
 use graphics::gfx_hal::adapter::AdapterState;
 use graphics::gfx_hal::device::DeviceState;
 use graphics::gfx_hal::image::Image;
@@ -10,7 +11,7 @@ pub struct BufferState<B: Backend, C: Capability> {
   device_state: Rc<RefCell<DeviceState<B, C>>>,
   memory: Option<B::Memory>,
   pub buffer: Option<B::Buffer>,
-  // size: u64,
+  size: u64,
 }
 
 impl<B: Backend, C: Capability> BufferState<B, C> {
@@ -23,7 +24,7 @@ impl<B: Backend, C: Capability> BufferState<B, C> {
   where
     T: Copy,
   {
-    let stride = std::mem::size_of::<T>() as u64;
+    let stride = size_of::<T>() as u64;
     let upload_size = buffer_source.len() as u64 * stride;
 
     let device = &device_state.borrow().device;
@@ -45,7 +46,7 @@ impl<B: Backend, C: Capability> BufferState<B, C> {
       device_state: Rc::clone(&device_state),
       memory: Some(memory),
       buffer: Some(buffer),
-      // size: memory_size,
+      size: memory_size,
     }
   }
 
@@ -117,8 +118,24 @@ impl<B: Backend, C: Capability> BufferState<B, C> {
       device_state: Rc::clone(&device_state),
       memory: Some(memory),
       buffer: Some(buffer),
-      // size: upload_size,
+      size: upload_size,
     }
+  }
+
+  pub unsafe fn update_buffer<T>(&mut self, offset: u64, source: &[T])
+  where
+    T: Copy,
+  {
+    let device = &self.device_state.borrow().device;
+
+    let stride = size_of::<T>() as u64;
+    let upload_size = source.len() as u64 * stride;
+
+    assert!(offset + upload_size <= self.size);
+
+    let mut data_target = device.acquire_mapping_writer::<T>(self.memory.as_ref().unwrap(), offset..self.size).unwrap();
+    data_target[0..source.len()].copy_from_slice(source);
+    device.release_mapping_writer(data_target).unwrap();
   }
 
   pub fn get_buffer(&self) -> &B::Buffer {

@@ -7,6 +7,7 @@ pub mod descriptor;
 pub mod device;
 pub mod framebuffer;
 pub mod image;
+pub mod input;
 pub mod pipeline;
 pub mod renderer;
 pub mod swapchain;
