@@ -164,7 +164,7 @@ impl<B: Backend> ImageState<B> {
         }
 
         ImageState {
-            descriptor_set: descriptor_set,
+            descriptor_set,
             buffer_state: image_buffer_state,
             image: Some(image),
             image_view: Some(image_view),

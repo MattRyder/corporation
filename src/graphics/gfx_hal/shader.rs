@@ -13,7 +13,7 @@ pub enum Error {
 pub struct Loader {}
 
 impl Loader {
-    pub fn compile<'a>(name: &str, kind: &Kind, shader_source: &str) -> Result<Vec<u8>, Error> {
+    pub fn compile(name: &str, kind: &Kind, shader_source: &str) -> Result<Vec<u8>, Error> {
         let mut compiler = shaderc::Compiler::new().unwrap();
         let opts = shaderc::CompileOptions::new().unwrap();
 

@@ -4,8 +4,8 @@ use mesh::Mesh;
 pub struct Node {
     name: String,
     transformation: Matrix4<f32>,
-    meshes: Vec<Mesh>,
-    children: Vec<Node>,
+    pub meshes: Vec<Mesh>,
+    pub children: Vec<Node>,
 }
 
 impl Node {

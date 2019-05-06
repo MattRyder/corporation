@@ -93,7 +93,7 @@ impl<B: Backend> PipelineState<B> {
                 location: 0,
                 binding: 0,
                 element: pso::Element {
-                    format: f::Format::Rg32Float,
+                    format: f::Format::Rgb32Float,
                     offset: 0,
                 },
             });

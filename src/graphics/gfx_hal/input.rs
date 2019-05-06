@@ -5,11 +5,13 @@ pub struct InputState {
     key_state: HashMap<VirtualKeyCode, ElementState>,
 }
 
-impl InputState {
-    pub fn new() -> Self {
+impl Default for InputState {
+    fn default() -> Self {
         InputState { key_state: HashMap::new() }
     }
+}
 
+impl InputState {
     pub fn on_key_input(&mut self, key_code: VirtualKeyCode, state: winit::ElementState) {
         self.key_state.insert(key_code, state);
     }

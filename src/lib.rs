@@ -34,9 +34,12 @@ use graphics::gfx_hal::backend::BackendState;
 use graphics::gfx_hal::image::Loader;
 use graphics::gfx_hal::renderer::RendererState;
 use graphics::gfx_hal::window::WindowState;
+use mesh::importer::Importer;
 use mesh::vertex::Vertex;
 use mesh::Face;
+use mesh::scene::Node;
 use mesh::Mesh;
+use cgmath::SquareMatrix;
 
 const WINDOW_WIDTH: f64 = 640.0;
 const WINDOW_HEIGHT: f64 = 480.0;
@@ -56,12 +59,12 @@ pub fn run() -> Result<()> {
   };
 
   let mut camera = camera::Camera::<f32>::default();
-  camera.set_position(cgmath::Point3::<f32>::new(0.0, 20.0, 15.0));
+  camera.set_position(cgmath::Point3::<f32>::new(0.0, 10.0, 15.0));
   camera.look_at(
     cgmath::Point3::<f32>::new(0.0, 0.0, 0.0),
-    cgmath::Vector3::<f32>::new(0.0, 1.0, 0.0),
+    cgmath::Vector3::<f32>::unit_y(),
   );
-  // camera.set_projection_matrix(WINDOW_WIDTH as f32, WINDOW_HEIGHT as f32, 90.0, 1.0, 10.0);
+  camera.set_projection_matrix(WINDOW_WIDTH as f32, WINDOW_HEIGHT as f32, 90.0, 0.001, 100.0);
 
   let quad_vertices = vec![
     Vertex {
@@ -86,14 +89,20 @@ pub fn run() -> Result<()> {
 
   let mesh = Mesh::new("Quad Meshy".to_string(), quad_vertices, quad_faces);
 
+  let mesh_node = Importer::load("resources/models/box/box.obj").unwrap().children.pop().unwrap();
+  // let mesh_node = Importer::load("resources/models/teapot.dae").unwrap().children.pop().unwrap();
+
+  let mut quad_mesh_node = Node::new("Quad Mesh Node", cgmath::Matrix4::<f32>::identity());
+  quad_mesh_node.add_mesh(mesh);
+
   let initializer = graphics::RenderStateInitializer {
-    mesh,
+    mesh_node,//: quad_mesh_node,
     camera,
     textures: vec![(0, Loader::from_file("resources/uv_grid.jpg").expect("Failed to load image"))],
     uniforms: vec![(
       0,
       graphics::UniformInitializer {
-        data: vec![1.0f32, 0.5f32, 0.5f32, 1.0f32],
+        data: vec![1.0f32, 1.0f32, 1.0f32, 1.0f32],
       },
     )],
   };

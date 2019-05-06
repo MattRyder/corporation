@@ -65,7 +65,7 @@ impl<B: Backend> FramebufferState<B> {
             Backbuffer::Framebuffer(fbo) => (Vec::new(), vec![fbo]),
         };
 
-        let iter_count = if frame_images.len() != 0 {
+        let iter_count = if !frame_images.is_empty() {
             frame_images.len()
         } else {
             1 // OpenGL can have no frame images

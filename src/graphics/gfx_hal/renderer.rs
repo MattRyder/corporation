@@ -17,6 +17,7 @@ use graphics::gfx_hal::swapchain::SwapchainState;
 use graphics::gfx_hal::uniform::Uniform;
 use graphics::gfx_hal::window::WindowState;
 use graphics::RenderStateInitializer;
+use mesh::scene::Node;
 use mesh::vertex::Vertex;
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -92,6 +93,7 @@ pub struct RendererState<B: Backend> {
   uniforms: Vec<Uniform<B>>,
   image_states: Vec<ImageState<B>>,
   camera: Camera<f32>,
+  mesh_node: Node,
   input_state: InputState,
 }
 
@@ -109,14 +111,14 @@ impl<B: Backend> RendererState<B> {
 
     let vertex_buffer = BufferState::new::<Vertex>(
       Rc::clone(&device_state),
-      initializer.mesh.vertices(),
+      initializer.mesh_node.meshes().first().unwrap().vertices(),
       buffer::Usage::VERTEX,
       &backend_state.adapter_state.mem_types,
     );
 
     let index_buffer = BufferState::new::<u32>(
       Rc::clone(&device_state),
-      &initializer.mesh.indices(),
+      &initializer.mesh_node.meshes().first().unwrap().indices(),
       buffer::Usage::INDEX,
       &backend_state.adapter_state.mem_types,
     );
@@ -252,11 +254,11 @@ impl<B: Backend> RendererState<B> {
     let framebuffer_state = FramebufferState::new(Rc::clone(&device_state), &render_pass_state, swapchain_state.as_mut().unwrap());
 
     let pipeline_state = {
-      let uniform_desc_sets = uniforms.iter().map(|u| u.get_layout()).collect::<Vec<&B::DescriptorSetLayout>>();
+      let uniform_desc_sets = uniforms.iter().map(Uniform::get_layout).collect::<Vec<&B::DescriptorSetLayout>>();
 
       let mut image_desc_sets = image_states
         .iter()
-        .map(|i| i.get_layout())
+        .map(ImageState::get_layout)
         .collect::<Vec<&B::DescriptorSetLayout>>();
 
       image_desc_sets.extend(uniform_desc_sets);
@@ -270,7 +272,7 @@ impl<B: Backend> RendererState<B> {
 
     let viewport = Self::create_viewport(&swapchain_state.as_ref().unwrap());
 
-    let input_state = InputState::new();
+    let input_state = InputState::default();
 
     RendererState {
       backend_state,
@@ -288,6 +290,7 @@ impl<B: Backend> RendererState<B> {
 
       uniforms,
       image_states,
+      mesh_node: initializer.mesh_node,
       camera: initializer.camera,
     }
   }
@@ -366,9 +369,9 @@ impl<B: Backend> RendererState<B> {
       }
 
       if self.input_state.is_key_down(&winit::VirtualKeyCode::Left) {
-        camera_movement.x = -movement_speed;
-      } else if self.input_state.is_key_down(&winit::VirtualKeyCode::Right) {
         camera_movement.x = movement_speed;
+      } else if self.input_state.is_key_down(&winit::VirtualKeyCode::Right) {
+        camera_movement.x = -movement_speed;
       }
 
       if camera_movement.magnitude() > 0.0 {
@@ -448,10 +451,11 @@ impl<B: Backend> RendererState<B> {
           self.render_pass_state.render_pass.as_ref().unwrap(),
           &framebuffer,
           self.viewport.rect,
-          &[command::ClearValue::Color(command::ClearColor::Float(CLEAR_COLOR.clone()))],
+          &[command::ClearValue::Color(command::ClearColor::Float(CLEAR_COLOR))],
         );
 
-        encoder.draw_indexed(0..6, 0, 0..1);
+        let index_count = self.mesh_node.meshes().first().unwrap().indices().len() as u32;
+        encoder.draw_indexed(0..index_count, 0, 0..1);
       }
 
       cmd_buffer.finish();
@@ -465,11 +469,20 @@ impl<B: Backend> RendererState<B> {
 
       self.device_state.as_ref().borrow_mut().queue_group.queues[0].submit(submission, Some(framebuffer_fence));
 
-      if let Err(_) = self.swapchain_state.as_ref().unwrap().swapchain.as_ref().unwrap().present(
-        &mut self.device_state.as_ref().borrow_mut().queue_group.queues[0],
-        frame,
-        Some(&*present_semaphore),
-      ) {
+      if self
+        .swapchain_state
+        .as_ref()
+        .unwrap()
+        .swapchain
+        .as_ref()
+        .unwrap()
+        .present(
+          &mut self.device_state.as_ref().borrow_mut().queue_group.queues[0],
+          frame,
+          Some(&*present_semaphore),
+        )
+        .is_err()
+      {
         // Failed to present image, swapchain should be rebuilt:
         will_recreate_swapchain = true;
         continue;

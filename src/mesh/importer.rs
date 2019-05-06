@@ -1,6 +1,6 @@
 use assimp;
 use assimp::math::matrix4::Matrix4x4;
-use cgmath::*;
+use cgmath::Matrix4;
 use mesh::scene::Node;
 use mesh::vertex::Vertex;
 use mesh::{Face, Mesh};
@@ -11,7 +11,10 @@ impl Importer {
     pub fn load(mesh_file_path: &str) -> Option<Node> {
         use assimp::import::Importer;
 
-        let importer = Importer::new();
+        let mut importer = Importer::new();
+        importer.triangulate(true);
+        importer.generate_normals(|x| x.enable = true);
+
         if let Ok(scene) = importer.read_file(mesh_file_path) {
             if !scene.is_incomplete() {
                 return Some(Self::process_node(&scene, &scene.root_node()));
@@ -65,13 +68,11 @@ impl Importer {
                 }
             }
 
-            if assimp_mesh.has_texture_coords(i) {
-                // TODO: Implement multiple UV channel lookup
-                const UV_CHANNEL_ZERO: usize = 0;
+            // TODO: Implement multiple UV channel lookup
+            const UV_CHANNEL_ZERO: usize = 0;
 
-                if let Some(ai_tex_coord) = assimp_mesh.get_texture_coord(UV_CHANNEL_ZERO, i as u32) {
-                    tex_coord = [ai_tex_coord.x, ai_tex_coord.y];
-                }
+            if let Some(ai_tex_coord) = assimp_mesh.get_texture_coord(UV_CHANNEL_ZERO, i as u32) {
+                tex_coord = [ai_tex_coord.x, ai_tex_coord.y];
             }
 
             vertices.push(Vertex {
