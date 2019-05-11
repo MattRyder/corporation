@@ -1,9 +1,10 @@
-use gfx_hal::format::{AsFormat, Rgba8Srgb};
+use gfx_hal::format::{AsFormat, Rgba8Srgb, D32Float};
 use gfx_hal::*;
 use graphics::gfx_hal::adapter::AdapterState;
 use graphics::gfx_hal::window::WindowState;
 
 pub type ColorFormat = Rgba8Srgb;
+pub type DepthFormat = D32Float;
 
 pub trait SurfaceTrait {
   #[cfg(feature = "gl")]
@@ -47,7 +48,7 @@ impl<B: Backend> BackendState<B> {
   #[cfg(feature = "gl")]
   pub fn new(window_state: &mut WindowState) -> (BackendState<gfx_backend::Backend>, ()) {
     let window = {
-      let builder = gfx_backend::config_context(gfx_backend::glutin::ContextBuilder::new(), ColorFormat::SELF, None).with_vsync(true);
+      let builder = gfx_backend::config_context(gfx_backend::glutin::ContextBuilder::new(), ColorFormat::SELF, None);
 
       gfx_backend::glutin::GlWindow::new(
         window_state.window_builder.take().unwrap(),

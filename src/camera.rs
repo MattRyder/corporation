@@ -65,6 +65,14 @@ where
 
 #[cfg(test)]
 pub mod test {
+    macro_rules! assert_delta {
+        ($x:expr, $y:expr, $d:expr) => {
+            if !($x - $y < $d || $y - $x < $d) {
+                panic!();
+            }
+        };
+    }
+
     use super::*;
 
     const POSITION: Point3<f32> = cgmath::Point3::<f32>::new(1.0, 2.0, 3.0);
@@ -102,9 +110,9 @@ pub mod test {
 
         camera.set_position(POSITION);
 
-        assert_eq!(camera.position.x, POSITION[0]);
-        assert_eq!(camera.position.y, POSITION[1]);
-        assert_eq!(camera.position.z, POSITION[2]);
+        assert_delta!(camera.position.x, POSITION[0], ::std::f32::EPSILON);
+        assert_delta!(camera.position.y, POSITION[1], ::std::f32::EPSILON);
+        assert_delta!(camera.position.z, POSITION[2], ::std::f32::EPSILON);
     }
 
     #[test]

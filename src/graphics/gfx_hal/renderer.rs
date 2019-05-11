@@ -10,7 +10,7 @@ use graphics::gfx_hal::buffer::BufferState;
 use graphics::gfx_hal::descriptor::DescriptorSetLayout;
 use graphics::gfx_hal::device::DeviceState;
 use graphics::gfx_hal::framebuffer::FramebufferState;
-use graphics::gfx_hal::image::ImageState;
+use graphics::gfx_hal::image::texture::TextureImageState;
 use graphics::gfx_hal::input::InputState;
 use graphics::gfx_hal::pipeline::PipelineState;
 use graphics::gfx_hal::swapchain::SwapchainState;
@@ -91,7 +91,7 @@ pub struct RendererState<B: Backend> {
 
   // New fields
   uniforms: Vec<Uniform<B>>,
-  image_states: Vec<ImageState<B>>,
+  image_states: Vec<TextureImageState<B>>,
   camera: Camera<f32>,
   mesh_node: Node,
   input_state: InputState,
@@ -179,7 +179,7 @@ impl<B: Backend> RendererState<B> {
 
       let image_descriptor_set = image_desc_set_layout.create_set(descriptor_pool.as_mut().unwrap());
 
-      let image_state = ImageState::new(
+      let image_state = TextureImageState::new(
         image_descriptor_set,
         &mut device_state.borrow_mut(),
         &backend_state.adapter_state,
@@ -258,7 +258,7 @@ impl<B: Backend> RendererState<B> {
 
       let mut image_desc_sets = image_states
         .iter()
-        .map(ImageState::get_layout)
+        .map(TextureImageState::get_layout)
         .collect::<Vec<&B::DescriptorSetLayout>>();
 
       image_desc_sets.extend(uniform_desc_sets);
@@ -362,15 +362,15 @@ impl<B: Backend> RendererState<B> {
       // Handle camera updates via input here:
       let movement_speed = 1.0 / delta_time_ms as f32;
       let mut camera_movement = cgmath::Vector3::<f32>::zero();
-      if self.input_state.is_key_down(&winit::VirtualKeyCode::Up) {
+      if self.input_state.is_key_down(winit::VirtualKeyCode::Up) {
         camera_movement.z = movement_speed;
-      } else if self.input_state.is_key_down(&winit::VirtualKeyCode::Down) {
+      } else if self.input_state.is_key_down(winit::VirtualKeyCode::Down) {
         camera_movement.z = -movement_speed;
       }
 
-      if self.input_state.is_key_down(&winit::VirtualKeyCode::Left) {
+      if self.input_state.is_key_down(winit::VirtualKeyCode::Left) {
         camera_movement.x = movement_speed;
-      } else if self.input_state.is_key_down(&winit::VirtualKeyCode::Right) {
+      } else if self.input_state.is_key_down(winit::VirtualKeyCode::Right) {
         camera_movement.x = -movement_speed;
       }
 
@@ -512,13 +512,13 @@ impl<B: Backend> RendererState<B> {
     let uniform_desc_sets = self
       .uniforms
       .iter()
-      .map(|u| u.get_layout())
+      .map(Uniform::get_layout)
       .collect::<Vec<&B::DescriptorSetLayout>>();
 
     let mut image_desc_sets = self
       .image_states
       .iter()
-      .map(|i| i.get_layout())
+      .map(TextureImageState::get_layout)
       .collect::<Vec<&B::DescriptorSetLayout>>();
 
     image_desc_sets.extend(uniform_desc_sets);

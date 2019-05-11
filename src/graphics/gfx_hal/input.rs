@@ -16,8 +16,8 @@ impl InputState {
         self.key_state.insert(key_code, state);
     }
 
-    pub fn is_key_down(&self, key_code: &VirtualKeyCode) -> bool {
-        match self.key_state.get(key_code) {
+    pub fn is_key_down(&self, key_code: VirtualKeyCode) -> bool {
+        match self.key_state.get(&key_code) {
             Some(element_state) => match element_state {
                 ElementState::Pressed => true,
                 ElementState::Released => false,
