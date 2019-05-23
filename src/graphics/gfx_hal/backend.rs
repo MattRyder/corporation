@@ -1,10 +1,9 @@
-use gfx_hal::format::{AsFormat, Rgba8Srgb, D32Float};
+use gfx_hal::format::{AsFormat, Rgba8Srgb};
 use gfx_hal::*;
 use graphics::gfx_hal::adapter::AdapterState;
 use graphics::gfx_hal::window::WindowState;
 
 pub type ColorFormat = Rgba8Srgb;
-pub type DepthFormat = D32Float;
 
 pub trait SurfaceTrait {
   #[cfg(feature = "gl")]

@@ -1,8 +1,10 @@
 use gfx_hal::format as f;
 use gfx_hal::image as i;
 use gfx_hal::*;
+use graphics::gfx_hal::adapter::AdapterState;
 use graphics::gfx_hal::device::DeviceState;
-use graphics::gfx_hal::image::COLOR_RANGE;
+use graphics::gfx_hal::image::depth::DepthImageState;
+use graphics::gfx_hal::image::texture::COLOR_RANGE;
 use graphics::gfx_hal::renderer::RenderPassState;
 use graphics::gfx_hal::swapchain::SwapchainState;
 use std::cell::RefCell;
@@ -13,6 +15,7 @@ pub struct FramebufferState<B: Backend> {
     framebuffer_fences: Option<Vec<B::Fence>>,
     command_pools: Option<Vec<CommandPool<B, Graphics>>>,
     frame_images: Option<Vec<(B::Image, B::ImageView)>>,
+    depth_images: Option<Vec<DepthImageState<B>>>,
     acquire_semaphores: Option<Vec<B::Semaphore>>,
     present_semaphores: Option<Vec<B::Semaphore>>,
     last_semaphore_index: usize,
@@ -21,11 +24,13 @@ pub struct FramebufferState<B: Backend> {
 
 impl<B: Backend> FramebufferState<B> {
     pub unsafe fn new(
+        non_device_state: &DeviceState<B, Graphics>,
         device_state: Rc<RefCell<DeviceState<B, Graphics>>>,
+        adapter_state: &AdapterState<B>,
         render_pass_state: &RenderPassState<B>,
         swapchain_state: &mut SwapchainState<B>,
     ) -> Self {
-        let (frame_images, framebuffers) = match swapchain_state.backbuffer.take().unwrap() {
+        let (frame_images, depth_images, framebuffers) = match swapchain_state.backbuffer.take().unwrap() {
             Backbuffer::Images(images) => {
                 let extent = i::Extent {
                     width: swapchain_state.extent.width,
@@ -47,22 +52,29 @@ impl<B: Backend> FramebufferState<B> {
                     })
                     .collect::<Vec<_>>();
 
+                let depth_images = pairs
+                    .iter()
+                    .map(|_| DepthImageState::new(non_device_state, Rc::clone(&device_state), &adapter_state, extent))
+                    .collect::<Vec<DepthImageState<B>>>();
+
                 let fbos = pairs
                     .iter()
-                    .map(|&(_, ref rtv)| {
+                    .zip(depth_images.iter())
+                    .map(|(&(_, ref rtv), depth_image)| {
+                        let attachments: Vec<&B::ImageView> = vec![rtv, depth_image.get_image_view().unwrap()];
+
                         device_state
                             .as_ref()
                             .borrow()
                             .device
-                            .create_framebuffer(render_pass_state.render_pass.as_ref().unwrap(), Some(rtv), extent)
+                            .create_framebuffer(render_pass_state.render_pass.as_ref().unwrap(), attachments, extent)
                             .unwrap()
                     })
                     .collect();
 
-                // (vec![], vec![])
-                (pairs, fbos)
+                (pairs, depth_images, fbos)
             }
-            Backbuffer::Framebuffer(fbo) => (Vec::new(), vec![fbo]),
+            Backbuffer::Framebuffer(fbo) => (Vec::new(), Vec::new(), vec![fbo]),
         };
 
         let iter_count = if !frame_images.is_empty() {
@@ -98,6 +110,7 @@ impl<B: Backend> FramebufferState<B> {
             present_semaphores: Some(present_semaphores),
             framebuffers: Some(framebuffers),
             frame_images: Some(frame_images),
+            depth_images: Some(depth_images),
             framebuffer_fences: Some(fences),
             device_state: Rc::clone(&device_state),
             last_semaphore_index: 0,
@@ -117,20 +130,20 @@ impl<B: Backend> FramebufferState<B> {
         semaphore_index
     }
 
-    pub unsafe fn get_frame_data(&mut self, frame_id: Option<usize>, semaphore_index: Option<usize>) -> (
-        Option<(
-            &mut B::Fence,
-            &mut B::Framebuffer,
-            &mut CommandPool<B, Graphics>
-        )>,
-        Option<(&mut B::Semaphore, &mut B::Semaphore)>
+    pub unsafe fn get_frame_data(
+        &mut self,
+        frame_id: Option<usize>,
+        semaphore_index: Option<usize>,
+    ) -> (
+        Option<(&mut B::Fence, &mut B::Framebuffer, &mut CommandPool<B, Graphics>)>,
+        Option<(&mut B::Semaphore, &mut B::Semaphore)>,
     ) {
         (
             if let Some(frame_id) = frame_id {
                 Some((
                     &mut self.framebuffer_fences.as_mut().unwrap()[frame_id],
                     &mut self.framebuffers.as_mut().unwrap()[frame_id],
-                    &mut self.command_pools.as_mut().unwrap()[frame_id]
+                    &mut self.command_pools.as_mut().unwrap()[frame_id],
                 ))
             } else {
                 None
@@ -142,7 +155,7 @@ impl<B: Backend> FramebufferState<B> {
                 ))
             } else {
                 None
-            }
+            },
         )
     }
 }

@@ -70,13 +70,38 @@ impl<B: Backend> PipelineState<B> {
                 main_pass: render_pass,
             };
 
-            let mut pipeline_description = pso::GraphicsPipelineDesc::new(
-                shader_entries,
-                Primitive::TriangleStrip,
-                pso::Rasterizer::FILL,
-                &pipeline_layout,
+            // let mut pipeline_description = pso::GraphicsPipelineDesc::new(
+            //     shader_entries,
+            //     Primitive::TriangleStrip,
+            //     pso::Rasterizer::FILL,
+            //     &pipeline_layout,
+            //     subpass,
+            // );
+
+            let depth_stencil = pso::DepthStencilDesc {
+                depth: pso::DepthTest::On {
+                    fun: pso::Comparison::LessEqual,
+                    write: true,
+                },
+                depth_bounds: false,
+                stencil: pso::StencilTest::Off,
+            };
+
+            let mut pipeline_description = pso::GraphicsPipelineDesc {
+                shaders: shader_entries,
+                rasterizer: pso::Rasterizer::FILL,
+                vertex_buffers: Vec::new(),
+                attributes: Vec::new(),
+                input_assembler: pso::InputAssemblerDesc::new(Primitive::TriangleStrip),
+                blender: pso::BlendDesc::default(),
+                depth_stencil,
+                multisampling: None,
+                baked_states: pso::BakedStates::default(),
+                layout: &pipeline_layout,
                 subpass,
-            );
+                flags: pso::PipelineCreationFlags::empty(),
+                parent: pso::BasePipeline::None,
+            };
 
             pipeline_description
                 .blender

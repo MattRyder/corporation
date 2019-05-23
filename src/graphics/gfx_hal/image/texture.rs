@@ -22,8 +22,8 @@ pub const COLOR_RANGE: i::SubresourceRange = i::SubresourceRange {
 pub struct TextureImageState<B: Backend> {
     pub image_resource_state: Option<ImageResourceState<B>>,
     pub descriptor_set: DescriptorSet<B, Graphics>,
-    sampler: Option<B::Sampler>,
     buffer_state: BufferState<B, Graphics>,
+    sampler: Option<B::Sampler>,
     image_fence: Option<B::Fence>,
 }
 
@@ -36,8 +36,6 @@ impl<B: Backend> TextureImageState<B> {
         usage: buffer::Usage,
         staging_pool: &mut CommandPool<B, Graphics>,
     ) -> Self {
-        const MIP_LEVELS: u8 = 1;
-
         let image_buffer_state = BufferState::new_texture(
             Rc::clone(&descriptor_set.layout.device_state),
             &device_state.device,
@@ -46,12 +44,14 @@ impl<B: Backend> TextureImageState<B> {
             usage,
         );
 
-        let mut image_state = ImageResourceState::new(
+        let image_state = ImageResourceState::new(
             device_state,
             adapter_state,
             COLOR_RANGE,
             Rc::clone(&descriptor_set.layout.device_state),
             texture.get_kind(),
+            i::Usage::TRANSFER_DST | i::Usage::SAMPLED,
+            ColorFormat::SELF,
         );
 
         let device = &mut device_state.device;

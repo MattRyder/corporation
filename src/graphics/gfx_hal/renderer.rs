@@ -1,6 +1,8 @@
 use camera::Camera;
 use cgmath::InnerSpace;
 use cgmath::Zero;
+use gfx_hal::command::{ClearColor, ClearDepthStencil, ClearValue};
+use gfx_hal::format::AsFormat;
 use gfx_hal::image as gfx_image;
 use gfx_hal::pso::*;
 use gfx_hal::*;
@@ -10,6 +12,7 @@ use graphics::gfx_hal::buffer::BufferState;
 use graphics::gfx_hal::descriptor::DescriptorSetLayout;
 use graphics::gfx_hal::device::DeviceState;
 use graphics::gfx_hal::framebuffer::FramebufferState;
+use graphics::gfx_hal::image::depth::{DepthFormat, DepthImageState};
 use graphics::gfx_hal::image::texture::TextureImageState;
 use graphics::gfx_hal::input::InputState;
 use graphics::gfx_hal::pipeline::PipelineState;
@@ -22,7 +25,10 @@ use mesh::vertex::Vertex;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-const CLEAR_COLOR: [f32; 4] = [0.255, 0.412, 0.882, 1.0];
+const CLEAR_COLORS: [ClearValue; 2] = [
+  ClearValue::Color(ClearColor::Float([0.255, 0.412, 0.882, 1.0])),
+  ClearValue::DepthStencil(ClearDepthStencil(1.0, 0)),
+];
 
 pub struct RenderPassState<B: Backend> {
   pub render_pass: Option<B::RenderPass>,
@@ -31,7 +37,7 @@ pub struct RenderPassState<B: Backend> {
 
 impl<B: Backend> RenderPassState<B> {
   pub unsafe fn new(swapchain_state: &SwapchainState<B>, device_state: Rc<RefCell<DeviceState<B, Graphics>>>) -> Self {
-    let attachment = pass::Attachment {
+    let color_attachment = pass::Attachment {
       format: Some(swapchain_state.format),
       samples: 1,
       ops: pass::AttachmentOps::new(pass::AttachmentLoadOp::Clear, pass::AttachmentStoreOp::Store),
@@ -39,25 +45,59 @@ impl<B: Backend> RenderPassState<B> {
       layouts: gfx_image::Layout::Undefined..gfx_image::Layout::Present,
     };
 
+    let depth_attachment = pass::Attachment {
+      format: Some(DepthFormat::SELF),
+      samples: 1,
+      ops: pass::AttachmentOps::new(pass::AttachmentLoadOp::Clear, pass::AttachmentStoreOp::Store),
+      stencil_ops: pass::AttachmentOps::DONT_CARE,
+      layouts: gfx_image::Layout::Undefined..gfx_image::Layout::DepthStencilAttachmentOptimal,
+    };
+
     let subpass = pass::SubpassDesc {
       colors: &[(0, gfx_image::Layout::ColorAttachmentOptimal)],
-      depth_stencil: None,
+      depth_stencil: Some(&(1, gfx_image::Layout::DepthStencilAttachmentOptimal)),
       inputs: &[],
       resolves: &[],
       preserves: &[],
     };
 
-    let dependency = pass::SubpassDependency {
+    let in_dependency = pass::SubpassDependency {
       passes: pass::SubpassRef::External..pass::SubpassRef::Pass(0),
-      stages: PipelineStage::COLOR_ATTACHMENT_OUTPUT..PipelineStage::COLOR_ATTACHMENT_OUTPUT,
-      accesses: gfx_image::Access::empty()..(gfx_image::Access::COLOR_ATTACHMENT_READ | gfx_image::Access::COLOR_ATTACHMENT_WRITE),
+      stages: PipelineStage::COLOR_ATTACHMENT_OUTPUT..PipelineStage::COLOR_ATTACHMENT_OUTPUT | PipelineStage::EARLY_FRAGMENT_TESTS,
+      accesses: gfx_image::Access::empty()
+        ..(gfx_image::Access::COLOR_ATTACHMENT_READ
+          | gfx_image::Access::COLOR_ATTACHMENT_WRITE
+          | gfx_image::Access::DEPTH_STENCIL_ATTACHMENT_READ
+          | gfx_image::Access::DEPTH_STENCIL_ATTACHMENT_WRITE),
     };
+
+    let out_dependency = pass::SubpassDependency {
+      passes: pass::SubpassRef::Pass(0)..pass::SubpassRef::External,
+      stages: PipelineStage::COLOR_ATTACHMENT_OUTPUT | PipelineStage::EARLY_FRAGMENT_TESTS..PipelineStage::COLOR_ATTACHMENT_OUTPUT,
+      accesses: (gfx_image::Access::COLOR_ATTACHMENT_READ
+        | gfx_image::Access::COLOR_ATTACHMENT_WRITE
+        | gfx_image::Access::DEPTH_STENCIL_ATTACHMENT_READ
+        | gfx_image::Access::DEPTH_STENCIL_ATTACHMENT_WRITE)..gfx_image::Access::empty(),
+    };
+
+    // let dependency = pass::SubpassDependency {
+    //   passes: pass::SubpassRef::External..pass::SubpassRef::Pass(0),
+    //   stages: PipelineStage::COLOR_ATTACHMENT_OUTPUT..PipelineStage::COLOR_ATTACHMENT_OUTPUT,
+    //   accesses: gfx_image::Access::empty()..(gfx_image::Access::COLOR_ATTACHMENT_READ | gfx_image::Access::COLOR_ATTACHMENT_WRITE),
+    // };
+
+    // let render_pass = device_state
+    //   .as_ref()
+    //   .borrow()
+    //   .device
+    //   .create_render_pass(&[color_attachment], &[subpass], &[dependency])
+    //   .expect("Failed to create render pass");
 
     let render_pass = device_state
       .as_ref()
       .borrow()
       .device
-      .create_render_pass(&[attachment], &[subpass], &[dependency])
+      .create_render_pass(&[color_attachment, depth_attachment], &[subpass], &[in_dependency, out_dependency])
       .expect("Failed to create render pass");
 
     RenderPassState {
@@ -251,7 +291,7 @@ impl<B: Backend> RendererState<B> {
 
     let render_pass_state = RenderPassState::new(swapchain_state.as_ref().unwrap(), Rc::clone(&device_state));
 
-    let framebuffer_state = FramebufferState::new(Rc::clone(&device_state), &render_pass_state, swapchain_state.as_mut().unwrap());
+    let framebuffer_state = FramebufferState::new(&device_state.borrow(), Rc::clone(&device_state), &backend_state.adapter_state, &render_pass_state, swapchain_state.as_mut().unwrap());
 
     let pipeline_state = {
       let uniform_desc_sets = uniforms.iter().map(Uniform::get_layout).collect::<Vec<&B::DescriptorSetLayout>>();
@@ -276,7 +316,7 @@ impl<B: Backend> RendererState<B> {
 
     RendererState {
       backend_state,
-      device_state,
+      device_state: Rc::clone(&device_state),
       framebuffer_state,
       descriptor_pool,
       index_buffer,
@@ -451,7 +491,7 @@ impl<B: Backend> RendererState<B> {
           self.render_pass_state.render_pass.as_ref().unwrap(),
           &framebuffer,
           self.viewport.rect,
-          &[command::ClearValue::Color(command::ClearColor::Float(CLEAR_COLOR))],
+          CLEAR_COLORS.iter(),
         );
 
         let index_count = self.mesh_node.meshes().first().unwrap().indices().len() as u32;
@@ -504,7 +544,9 @@ impl<B: Backend> RendererState<B> {
     self.render_pass_state = RenderPassState::new(&self.swapchain_state.as_ref().unwrap(), Rc::clone(&self.device_state));
 
     self.framebuffer_state = FramebufferState::new(
+      &mut self.device_state.borrow_mut(),
       Rc::clone(&self.device_state),
+      &self.backend_state.adapter_state,
       &self.render_pass_state,
       self.swapchain_state.as_mut().unwrap(),
     );

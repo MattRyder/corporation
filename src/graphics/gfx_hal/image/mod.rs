@@ -1,16 +1,14 @@
-use std::cell::RefCell;
 use gfx_hal::format as f;
 use gfx_hal::format::AsFormat;
 use gfx_hal::image as i;
 use gfx_hal::memory as m;
-use gfx_hal::pso::PipelineStage;
 use gfx_hal::*;
 use graphics::gfx_hal::adapter::AdapterState;
 use graphics::gfx_hal::backend::ColorFormat;
 use graphics::gfx_hal::buffer::BufferState;
-use graphics::gfx_hal::descriptor::{DescriptorSet, DescriptorSetWrite};
 use graphics::gfx_hal::device::DeviceState;
 use image;
+use std::cell::RefCell;
 use std::ops::Range;
 use std::rc::Rc;
 
@@ -19,18 +17,6 @@ pub mod texture;
 
 /// The number of bytes per value of an RGBA image
 pub const RGBA_IMAGE_STRIDE: usize = 4;
-
-pub const COLOR_RANGE: i::SubresourceRange = i::SubresourceRange {
-    aspects: f::Aspects::COLOR,
-    levels: 0..1,
-    layers: 0..1,
-};
-
-pub const DEPTH_RANGE: i::SubresourceRange = i::SubresourceRange {
-    aspects: f::Aspects::DEPTH,
-    levels: 0..1,
-    layers: 0..1,
-};
 
 pub struct Image {
     pub image: image::RgbaImage,
@@ -96,34 +82,36 @@ impl Loader {
 pub struct ImageResourceState<B: Backend> {
     device_state: Rc<RefCell<DeviceState<B, Graphics>>>,
     image: Option<B::Image>,
-    image_view: Option<B::ImageView>,
+    pub image_view: Option<B::ImageView>,
     memory: Option<B::Memory>,
 }
 
 impl<B: Backend> ImageResourceState<B> {
     pub unsafe fn new(
-        device_state: &mut DeviceState<B, Graphics>,
+        non_device_state: &DeviceState<B, Graphics>,
         adapter_state: &AdapterState<B>,
-
         subresource_range: i::SubresourceRange,
-        dev_state: Rc<RefCell<DeviceState<B, Graphics>>>,
+        device_state: Rc<RefCell<DeviceState<B, Graphics>>>,
         kind: &i::Kind,
+        usage: i::Usage,
+        color_format: f::Format,
     ) -> Self {
         const MIP_LEVELS: u8 = 1;
 
-        let mut image = device_state
+        let mut image = non_device_state
             .device
             .create_image(
                 kind.clone(),
                 MIP_LEVELS,
-                ColorFormat::SELF,
+                color_format,
                 i::Tiling::Optimal,
-                i::Usage::TRANSFER_DST | i::Usage::SAMPLED,
+                usage,
                 i::ViewCapabilities::empty(),
             )
             .unwrap();
 
-        let device = &mut device_state.device;
+        let device = &non_device_state.device;
+
         let requirements = device.get_image_requirements(&image);
 
         let device_memory_type =
@@ -147,7 +135,7 @@ impl<B: Backend> ImageResourceState<B> {
             image: Some(image),
             image_view: Some(image_view),
             memory: Some(device_image_memory),
-            device_state: dev_state,
+            device_state: Rc::clone(&device_state),
         }
     }
 }
